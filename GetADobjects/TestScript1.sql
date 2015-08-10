@@ -2,6 +2,8 @@
 
 --EXEC clr_GetADcontacts
 
-EXEC clr_GetADcomputers
+--EXEC clr_GetADcomputers
+
+EXEC clr_GetADgroups
 
 

@@ -439,6 +439,112 @@ public partial class StoredProcedures
 
         file.Close();
     }   // endof: clr_GetADcomputers
+
+    [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADgroups()
+    {
+        string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+
+        // Combine the base folder with your specific folder....
+        string specificFolder = Path.Combine(folder, "GetADobjects");
+
+        // Check if folder exists and if not, create it
+        if (!Directory.Exists(specificFolder))
+            Directory.CreateDirectory(specificFolder);
+
+        string filename = Path.Combine(specificFolder, "Log.txt");
+
+        System.IO.StreamWriter file =
+            new System.IO.StreamWriter(filename);
+
+        try
+        {
+            GroupsTable GroupsTblData = new GroupsTable();
+            DataTable tbl = GroupsTblData.CreateTable();
+
+            PrincipalContext oPrincipalContext = new PrincipalContext(ContextType.Domain, "veca.is", "DC=veca,DC=is", ContextOptions.Negotiate);
+
+            GroupPrincipal up = new GroupPrincipal(oPrincipalContext);
+
+            up.SamAccountName = "*";
+
+            PrincipalSearcher ps = new PrincipalSearcher();
+            ps.QueryFilter = up;
+
+            PrincipalSearchResult<Principal> results = ps.FindAll();
+
+            if (results != null)
+            {
+                DataRow row;
+
+                foreach (GroupPrincipal group in results)
+                {
+                    row = tbl.NewRow();
+
+                    // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+                    // Filter on Method=true, IsUACflag=no
+                    // Copy/Paste all filtered cells from "Methods" column.
+                    row[1] = group.Description;
+                    row[2] = group.DisplayName;
+                    row[3] = group.DistinguishedName;
+                    row[7] = group.Name;
+                    row[9] = group.StructuralObjectClass;
+                    row[10] = group.Guid;
+                    row[11] = group.SamAccountName;
+                    row[12] = group.IsSecurityGroup;
+                    row[13] = group.Sid;
+                    row[14] = group.UserPrincipalName;
+
+
+                    bool HasPropList = false;
+                    DirectoryEntry directoryEntry = group.GetUnderlyingObject() as DirectoryEntry;
+                    for (int i = 0; i < GroupsTblData.collist.Length; i++)
+                    {
+                        TableColDef coldef = GroupsTblData.collist[i];
+                        if (coldef.IsMethod)
+                            continue;
+                        if (!HasPropList)
+                        {
+                            System.DirectoryServices.PropertyCollection props = directoryEntry.Properties;
+                            foreach (string propertyName in props.PropertyNames)
+                            {
+                                file.WriteLine("Property name: " + propertyName);
+                                foreach (object value in directoryEntry.Properties[propertyName])
+                                {
+                                    file.WriteLine("\t{0} \t({1})", value.ToString(), value.GetType());
+                                }
+                            }
+                            HasPropList = true;
+                        }
+                        if (directoryEntry.Properties.Contains(coldef.ADpropName))
+                        {
+                            try
+                            {
+                                row[i] = directoryEntry.Properties[coldef.ADpropName].Value;
+                            }
+                            catch (Exception ex)
+                            {
+                                file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                            }
+                        }
+                        else
+                        {
+                            file.WriteLine("Missing property (" + coldef.ADpropName + ") on group " + group.SamAccountName);
+                        }
+                    }
+
+                    tbl.Rows.Add(row);
+                }
+            }
+            DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+
+        file.Close();
+    }   // endof: clr_GetADcomputers
 }   // endof: StoredProcedures partial class
 
 public class TableColDef
@@ -661,6 +767,44 @@ public class ComputersTable
         return tbl;
     }
 }   // endof: ComputersTable class
+
+public class GroupsTable
+{
+    public TableColDef[] collist;
+
+    public GroupsTable()
+    {
+        collist = new TableColDef[15];  // <-- SET number of elements to number of cells copied below.!
+
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column in "Contacts" sheet.
+        collist[0] = new TableColDef("Created", typeof(DateTime), "whenCreated", false);
+        collist[1] = new TableColDef("Description", typeof(String), "Description", true);
+        collist[2] = new TableColDef("DisplayName", typeof(String), "DisplayName", true);
+        collist[3] = new TableColDef("DistinguishedName", typeof(String), "DistinguishedName", true);
+        collist[4] = new TableColDef("EmailAddress", typeof(String), "mail", false);
+        collist[5] = new TableColDef("ManagedBy", typeof(String), "ManagedBy", false);
+        collist[6] = new TableColDef("Modified", typeof(DateTime), "whenChanged", false);
+        collist[7] = new TableColDef("Name", typeof(String), "Name", true);
+        collist[8] = new TableColDef("ObjectCategory", typeof(String), "ObjectCategory", false);
+        collist[9] = new TableColDef("ObjectClass", typeof(String), "StructuralObjectClass", true);
+        collist[10] = new TableColDef("ObjectGUID", typeof(Guid), "Guid", true);
+        collist[11] = new TableColDef("SamAccountName", typeof(String), "SamAccountName", true);
+        collist[12] = new TableColDef("SecurityEnabled", typeof(Boolean), "IsSecurityGroup", true);
+        collist[13] = new TableColDef("SID", typeof(String), "Sid", true);
+        collist[14] = new TableColDef("UserPrincipalName", typeof(String), "UserPrincipalName", true);
+    }
+
+    public DataTable CreateTable()
+    {
+        DataTable tbl = new DataTable();
+        foreach (TableColDef col in collist)
+        {
+            tbl.Columns.Add(col.ColName, col.datatype);
+        }
+        return tbl;
+    }
+}   // endof: GroupsTable class
 
 // Source: https://msdn.microsoft.com/en-us/library/ff878201.aspx
 public static class DataSetUtilities
