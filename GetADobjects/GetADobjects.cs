@@ -190,6 +190,100 @@ public partial class StoredProcedures
 
         file.Close();
     }   // endof: clr_GetADusers
+
+    [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADcontacts()
+    {
+        string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+
+        // Combine the base folder with your specific folder....
+        string specificFolder = Path.Combine(folder, "GetADobjects");
+
+        // Check if folder exists and if not, create it
+        if (!Directory.Exists(specificFolder))
+            Directory.CreateDirectory(specificFolder);
+
+        string filename = Path.Combine(specificFolder, "Log.txt");
+
+        System.IO.StreamWriter file =
+            new System.IO.StreamWriter(filename);
+
+        try
+        {
+            ContactsTable ContactsTblData = new ContactsTable();
+            DataTable tbl = ContactsTblData.CreateTable();
+
+            PrincipalContext oPrincipalContext = new PrincipalContext(ContextType.Domain, "veca.is", "DC=veca,DC=is", ContextOptions.Negotiate);
+
+            ContactPrincipal up = new ContactPrincipal(oPrincipalContext);
+
+            up.Surname = "*";
+
+            PrincipalSearcher ps = new PrincipalSearcher();
+            ps.QueryFilter = up;
+
+            PrincipalSearchResult<Principal> results = ps.FindAll();
+
+            if (results != null)
+            {
+                DataRow row;
+
+                foreach (ContactPrincipal contact in results)
+                {
+                    row = tbl.NewRow();
+
+                    row[23] = contact.StructuralObjectClass;
+                    row[24] = contact.Guid;
+
+                    bool HasPropList = false;
+                    DirectoryEntry directoryEntry = contact.GetUnderlyingObject() as DirectoryEntry;
+                    for (int i = 0; i < ContactsTblData.collist.Length; i++)
+                    {
+                        TableColDef coldef = ContactsTblData.collist[i];
+                        if (coldef.IsMethod)
+                            continue;
+                        if (!HasPropList)
+                        {
+                            System.DirectoryServices.PropertyCollection props = directoryEntry.Properties;
+                            foreach (string propertyName in props.PropertyNames)
+                            {
+                                file.WriteLine("Property name: " + propertyName);
+                                foreach (object value in directoryEntry.Properties[propertyName])
+                                {
+                                    file.WriteLine("\t{0} \t({1})", value.ToString(), value.GetType());
+                                }
+                            }
+                            HasPropList = true;
+                        }
+                        if (directoryEntry.Properties.Contains(coldef.ADpropName))
+                        {
+                            try
+                            {
+                                row[i] = directoryEntry.Properties[coldef.ADpropName].Value;
+                            }
+                            catch (Exception ex)
+                            {
+                                file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                            }
+                        }
+                        else
+                        {
+                            file.WriteLine("Missing property (" + coldef.ADpropName + ") on contact " + contact.Name);
+                        }
+                    }
+
+                    tbl.Rows.Add(row);
+                }
+            }
+            DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+
+        file.Close();
+    }   // endof: clr_GetADcontacts
 }
 
 public class TableColDef
@@ -296,7 +390,64 @@ public class UserTable
     }
 }
 
-// From: https://msdn.microsoft.com/en-us/library/ff878201.aspx
+public class ContactsTable
+{
+    public TableColDef[] collist;
+
+    public ContactsTable()
+    {
+        collist = new TableColDef[34];  // <-- SET number of elements to number of cells copied below.!
+
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column in "Contacts" sheet.
+        collist[0] = new TableColDef("City", typeof(String), "l", false);
+        collist[1] = new TableColDef("CN", typeof(String), "CN", false);
+        collist[2] = new TableColDef("Company", typeof(String), "Company", false);
+        collist[3] = new TableColDef("Country", typeof(String), "co", false);
+        collist[4] = new TableColDef("Created", typeof(DateTime), "whenCreated", false);
+        collist[5] = new TableColDef("Department", typeof(String), "Department", false);
+        collist[6] = new TableColDef("Description", typeof(String), "description", false);
+        collist[7] = new TableColDef("DisplayName", typeof(String), "displayName", false);
+        collist[8] = new TableColDef("DistinguishedName", typeof(String), "distinguishedName", false);
+        collist[9] = new TableColDef("Division", typeof(String), "Division", false);
+        collist[10] = new TableColDef("EmailAddress", typeof(String), "mail", false);
+        collist[11] = new TableColDef("EmployeeID", typeof(String), "employeeID", false);
+        collist[12] = new TableColDef("EmployeeNumber", typeof(String), "EmployeeNumber", false);
+        collist[13] = new TableColDef("Fax", typeof(String), "facsimileTelephoneNumber", false);
+        collist[14] = new TableColDef("GivenName", typeof(String), "givenName", false);
+        collist[15] = new TableColDef("HomePage", typeof(String), "wWWHomePage", false);
+        collist[16] = new TableColDef("HomePhone", typeof(String), "HomePhone", false);
+        collist[17] = new TableColDef("Initials", typeof(String), "Initials", false);
+        collist[18] = new TableColDef("Manager", typeof(String), "Manager", false);
+        collist[19] = new TableColDef("MobilePhone", typeof(String), "mobile", false);
+        collist[20] = new TableColDef("Modified", typeof(DateTime), "whenChanged", false);
+        collist[21] = new TableColDef("Name", typeof(String), "name", false);
+        collist[22] = new TableColDef("ObjectCategory", typeof(String), "ObjectCategory", false);
+        collist[23] = new TableColDef("ObjectClass", typeof(String), "StructuralObjectClass", true);
+        collist[24] = new TableColDef("ObjectGUID", typeof(Guid), "Guid", true);
+        collist[25] = new TableColDef("Office", typeof(String), "physicalDeliveryOfficeName", false);
+        collist[26] = new TableColDef("OfficePhone", typeof(String), "telephoneNumber", false);
+        collist[27] = new TableColDef("Pager", typeof(String), "Pager", false);
+        collist[28] = new TableColDef("POBox", typeof(String), "postOfficeBox", false);
+        collist[29] = new TableColDef("PostalCode", typeof(String), "PostalCode", false);
+        collist[30] = new TableColDef("State", typeof(String), "st", false);
+        collist[31] = new TableColDef("StreetAddress", typeof(String), "StreetAddress", false);
+        collist[32] = new TableColDef("Surname", typeof(String), "sn", false);
+        collist[33] = new TableColDef("Title", typeof(String), "Title", false);
+    }
+
+    public DataTable CreateTable()
+    {
+        DataTable tbl = new DataTable();
+        foreach (TableColDef col in collist)
+        {
+            tbl.Columns.Add(col.ColName, col.datatype);
+        }
+        return tbl;
+    }
+}   // endof: ContactsTable class
+
+// Source: https://msdn.microsoft.com/en-us/library/ff878201.aspx
 public static class DataSetUtilities
 {
 
@@ -452,3 +603,130 @@ public static class DataSetUtilities
     }
 
 }   // endof: class DataSetUtilities
+
+// Source: http://stackoverflow.com/questions/14158995/adding-contact-to-distribution-list-the-principal-object-must-have-a-valid-sid
+[DirectoryObjectClass("contact")]
+[DirectoryRdnPrefix("CN")]
+public class ContactPrincipal : AuthenticablePrincipal
+{
+    public ContactPrincipal(PrincipalContext context)
+        : base(context)
+    {
+    }
+
+    //public static ContactPrincipal FindByIdentity(PrincipalContext context, string identityValue)
+    //{
+    //    return (ContactPrincipal)Principal.FindByIdentityWithType(context, typeof(ContactPrincipal), identityValue);
+    //}
+
+    //public static ContactPrincipal FindByIdentity(PrincipalContext context, IdentityType identityType,
+    //                                              string identityValue)
+    //{
+    //    return
+    //       (ContactPrincipal)
+    //       Principal.FindByIdentityWithType(context, typeof(ContactPrincipal), identityType, identityValue);
+    //}
+
+    //[DirectoryProperty("mail")]
+    //public string EmailAddress
+    //{
+    //    get
+    //    {
+    //        if (ExtensionGet("mail").Length == 1)
+    //        {
+    //            return ExtensionGet("mail")[0].ToString();
+    //        }
+    //        else
+    //        {
+    //            return null;
+    //        }
+    //    }
+    //    set { ExtensionSet("mail", value); }
+    //}
+
+    //[DirectoryProperty("givenName")]
+    //public string GivenName
+    //{
+    //    get
+    //    {
+    //        if (ExtensionGet("givenName").Length == 1)
+    //        {
+    //            return ExtensionGet("givenName")[0].ToString();
+    //        }
+    //        else
+    //        {
+    //            return null;
+    //        }
+    //    }
+    //    set { ExtensionSet("givenName", value); }
+    //}
+
+    //[DirectoryProperty("middleName")]
+    //public string MiddleName
+    //{
+    //    get
+    //    {
+    //        if (ExtensionGet("middleName").Length == 1)
+    //        {
+    //            return ExtensionGet("middleName")[0].ToString();
+    //        }
+    //        else
+    //        {
+    //            return null;
+    //        }
+    //    }
+    //    set { ExtensionSet("middleName", value); }
+    //}
+
+    [DirectoryProperty("sn")]
+    public string Surname
+    {
+        get
+        {
+            if (ExtensionGet("sn").Length == 1)
+            {
+                return ExtensionGet("sn")[0].ToString();
+            }
+            else
+            {
+                return null;
+            }
+        }
+        set { ExtensionSet("sn", value); }
+    }
+
+    //[DirectoryProperty("mobile")]
+    //public string MobileTelephoneNumber
+    //{
+    //    get
+    //    {
+    //        if (ExtensionGet("mobile").Length == 1)
+    //        {
+    //            return ExtensionGet("mobile")[0].ToString();
+    //        }
+    //        else
+    //        {
+    //            return null;
+    //        }
+    //    }
+    //    set { ExtensionSet("mobile", value); }
+    //}
+
+    //[DirectoryProperty("telephoneNumber")]
+    //public string VoiceTelephoneNumber
+    //{
+    //    get
+    //    {
+    //        if (ExtensionGet("telephoneNumber").Length == 1)
+    //        {
+    //            return ExtensionGet("telephoneNumber")[0].ToString();
+    //        }
+    //        else
+    //        {
+    //            return null;
+    //        }
+    //    }
+    //    set { ExtensionSet("telephoneNumber", value); }
+    //}
+}   // endof: ContactPrincipal class
+

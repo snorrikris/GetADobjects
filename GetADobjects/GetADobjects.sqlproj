@@ -73,5 +73,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="TestScript1.sql" />
+    <None Include="AD_DW_Users table map to .net V4.xlsx" />
   </ItemGroup>
 </Project>
