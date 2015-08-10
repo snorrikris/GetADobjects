@@ -284,7 +284,162 @@ public partial class StoredProcedures
 
         file.Close();
     }   // endof: clr_GetADcontacts
-}
+
+    [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADcomputers()
+    {
+        string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+
+        // Combine the base folder with your specific folder....
+        string specificFolder = Path.Combine(folder, "GetADobjects");
+
+        // Check if folder exists and if not, create it
+        if (!Directory.Exists(specificFolder))
+            Directory.CreateDirectory(specificFolder);
+
+        string filename = Path.Combine(specificFolder, "Log.txt");
+
+        System.IO.StreamWriter file =
+            new System.IO.StreamWriter(filename);
+
+        try
+        {
+            ComputersTable CompuersTblData = new ComputersTable();
+            DataTable tbl = CompuersTblData.CreateTable();
+
+            PrincipalContext oPrincipalContext = new PrincipalContext(ContextType.Domain, "veca.is", "DC=veca,DC=is", ContextOptions.Negotiate);
+
+            ComputerPrincipal up = new ComputerPrincipal(oPrincipalContext);
+
+            up.SamAccountName = "*";
+
+            PrincipalSearcher ps = new PrincipalSearcher();
+            ps.QueryFilter = up;
+
+            PrincipalSearchResult<Principal> results = ps.FindAll();
+
+            if (results != null)
+            {
+                DataRow row;
+
+                foreach (ComputerPrincipal computer in results)
+                {
+                    row = tbl.NewRow();
+
+                    // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+                    // Filter on Method=true, IsUACflag=no
+                    // Copy/Paste all filtered cells from "Methods" column.
+                    if (computer.AccountExpirationDate != null) row[0] = computer.AccountExpirationDate;
+                    if (computer.AccountLockoutTime != null) row[1] = computer.AccountLockoutTime;
+                    row[3] = computer.AllowReversiblePasswordEncryption;
+                    row[4] = computer.BadLogonCount;
+                    row[5] = computer.UserCannotChangePassword;
+                    row[8] = computer.Description;
+                    row[9] = computer.DisplayName;
+                    row[10] = computer.DistinguishedName;
+                    row[13] = computer.Enabled;
+                    if (computer.LastBadPasswordAttempt != null) row[14] = computer.LastBadPasswordAttempt;
+                    if (computer.LastLogon != null) row[15] = computer.LastLogon;
+                    row[17] = computer.IsAccountLockedOut();
+                    row[20] = computer.Name;
+                    row[22] = computer.StructuralObjectClass;
+                    row[23] = computer.Guid;
+                    if (computer.LastPasswordSet != null) row[25] = computer.LastPasswordSet;
+                    row[26] = computer.PasswordNeverExpires;
+                    row[27] = computer.PasswordNotRequired;
+                    row[29] = computer.SamAccountName;
+                    row[30] = computer.Sid;
+                    row[31] = computer.SmartcardLogonRequired;
+                    row[35] = computer.UserPrincipalName;
+
+
+                    bool HasPropList = false;
+                    DirectoryEntry directoryEntry = computer.GetUnderlyingObject() as DirectoryEntry;
+                    for (int i = 0; i < CompuersTblData.collist.Length; i++)
+                    {
+                        TableColDef coldef = CompuersTblData.collist[i];
+                        if (coldef.IsMethod)
+                            continue;
+                        if (!HasPropList)
+                        {
+                            System.DirectoryServices.PropertyCollection props = directoryEntry.Properties;
+                            foreach (string propertyName in props.PropertyNames)
+                            {
+                                file.WriteLine("Property name: " + propertyName);
+                                foreach (object value in directoryEntry.Properties[propertyName])
+                                {
+                                    file.WriteLine("\t{0} \t({1})", value.ToString(), value.GetType());
+                                }
+                            }
+                            HasPropList = true;
+                        }
+                        if (directoryEntry.Properties.Contains(coldef.ADpropName))
+                        {
+                            try
+                            {
+                                row[i] = directoryEntry.Properties[coldef.ADpropName].Value;
+                            }
+                            catch (Exception ex)
+                            {
+                                file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                            }
+                        }
+                        else
+                        {
+                            file.WriteLine("Missing property (" + coldef.ADpropName + ") on computer " + computer.SamAccountName);
+                        }
+                    }
+
+                    // Get "userAccountControl" from current row.
+                    Int32 uac = (Int32)row["userAccountControl"];
+
+                    //const Int32 SCRIPT = 0x0001;
+                    //const Int32 ACCOUNTDISABLE = 0x0002;
+                    const Int32 HOMEDIR_REQUIRED = 0x0008;
+                    //const Int32 LOCKOUT = 0x0010;
+                    //const Int32 PASSWD_NOTREQD = 0x0020;
+                    //const Int32 PASSWD_CANT_CHANGE = 0x0040;
+                    //const Int32 ENCRYPTED_TEXT_PWD_ALLOWED = 0x0080;
+                    //const Int32 TEMP_DUPLICATE_ACCOUNT = 0x0100;
+                    //const Int32 NORMAL_ACCOUNT = 0x0200;
+                    //const Int32 INTERDOMAIN_TRUST_ACCOUNT = 0x0800;
+                    //const Int32 WORKSTATION_TRUST_ACCOUNT = 0x1000;
+                    //const Int32 SERVER_TRUST_ACCOUNT = 0x2000;
+                    //const Int32 DONT_EXPIRE_PASSWORD = 0x10000;
+                    const Int32 MNS_LOGON_ACCOUNT = 0x20000;
+                    //const Int32 SMARTCARD_REQUIRED = 0x40000;
+                    const Int32 TRUSTED_FOR_DELEGATION = 0x80000;
+                    const Int32 NOT_DELEGATED = 0x100000;
+                    const Int32 USE_DES_KEY_ONLY = 0x200000;
+                    const Int32 DONT_REQ_PREAUTH = 0x400000;
+                    const Int32 PASSWORD_EXPIRED = 0x800000;
+                    const Int32 TRUSTED_TO_AUTH_FOR_DELEGATION = 0x1000000;
+                    //const Int32 PARTIAL_SECRETS_ACCOUNT = 0x04000000;
+
+                    // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+                    // Filter on IsUACflag=yes
+                    // Copy/Paste all filtered cells from "Methods" column.
+                    row[2] = ((uac & NOT_DELEGATED) != 0) ? true : false;
+                    row[12] = ((uac & DONT_REQ_PREAUTH) != 0) ? true : false;
+                    row[24] = ((uac & PASSWORD_EXPIRED) != 0) ? true : false;
+                    row[32] = ((uac & TRUSTED_FOR_DELEGATION) != 0) ? true : false;
+                    row[33] = ((uac & TRUSTED_TO_AUTH_FOR_DELEGATION) != 0) ? true : false;
+                    row[34] = ((uac & USE_DES_KEY_ONLY) != 0) ? true : false;
+
+
+                    tbl.Rows.Add(row);
+                }
+            }
+            DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+
+        file.Close();
+    }   // endof: clr_GetADcomputers
+}   // endof: StoredProcedures partial class
 
 public class TableColDef
 {
@@ -446,6 +601,66 @@ public class ContactsTable
         return tbl;
     }
 }   // endof: ContactsTable class
+
+public class ComputersTable
+{
+    public TableColDef[] collist;
+
+    public ComputersTable()
+    {
+        collist = new TableColDef[37];  // <-- SET number of elements to number of cells copied below.!
+
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column in "Contacts" sheet.
+        collist[0] = new TableColDef("AccountExpirationDate", typeof(DateTime), "AccountExpirationDate", true);
+        collist[1] = new TableColDef("AccountLockoutTime", typeof(DateTime), "AccountLockoutTime", true);
+        collist[2] = new TableColDef("AccountNotDelegated", typeof(Boolean), "NOT_DELEGATED", true);
+        collist[3] = new TableColDef("AllowReversiblePasswordEncryption", typeof(Boolean), "AllowReversiblePasswordEncryption", true);
+        collist[4] = new TableColDef("BadLogonCount", typeof(Int32), "BadLogonCount", true);
+        collist[5] = new TableColDef("CannotChangePassword", typeof(Boolean), "UserCannotChangePassword", true);
+        collist[6] = new TableColDef("CN", typeof(String), "CN", false);
+        collist[7] = new TableColDef("Created", typeof(DateTime), "whenCreated", false);
+        collist[8] = new TableColDef("Description", typeof(String), "Description", true);
+        collist[9] = new TableColDef("DisplayName", typeof(String), "DisplayName", true);
+        collist[10] = new TableColDef("DistinguishedName", typeof(String), "DistinguishedName", true);
+        collist[11] = new TableColDef("DNSHostName", typeof(String), "dNSHostName", false);
+        collist[12] = new TableColDef("DoesNotRequirePreAuth", typeof(Boolean), "DONT_REQ_PREAUTH", true);
+        collist[13] = new TableColDef("Enabled", typeof(Boolean), "Enabled", true);
+        collist[14] = new TableColDef("LastBadPasswordAttempt", typeof(DateTime), "LastBadPasswordAttempt", true);
+        collist[15] = new TableColDef("LastLogonDate", typeof(DateTime), "LastLogon", true);
+        collist[16] = new TableColDef("Location", typeof(String), "location", false);
+        collist[17] = new TableColDef("LockedOut", typeof(Boolean), "IsAccountLockedOut", true);
+        collist[18] = new TableColDef("ManagedBy", typeof(String), "ManagedBy", false);
+        collist[19] = new TableColDef("Modified", typeof(DateTime), "whenChanged", false);
+        collist[20] = new TableColDef("Name", typeof(String), "Name", true);
+        collist[21] = new TableColDef("ObjectCategory", typeof(String), "ObjectCategory", false);
+        collist[22] = new TableColDef("ObjectClass", typeof(String), "StructuralObjectClass", true);
+        collist[23] = new TableColDef("ObjectGUID", typeof(Guid), "Guid", true);
+        collist[24] = new TableColDef("PasswordExpired", typeof(Boolean), "PASSWORD_EXPIRED", true);
+        collist[25] = new TableColDef("PasswordLastSet", typeof(DateTime), "LastPasswordSet", true);
+        collist[26] = new TableColDef("PasswordNeverExpires", typeof(Boolean), "PasswordNeverExpires", true);
+        collist[27] = new TableColDef("PasswordNotRequired", typeof(Boolean), "PasswordNotRequired", true);
+        collist[28] = new TableColDef("PrimaryGroupID", typeof(Int32), "PrimaryGroupID", false);
+        collist[29] = new TableColDef("SamAccountName", typeof(String), "SamAccountName", true);
+        collist[30] = new TableColDef("SID", typeof(String), "Sid", true);
+        collist[31] = new TableColDef("SmartcardLogonRequired", typeof(Boolean), "SmartcardLogonRequired", true);
+        collist[32] = new TableColDef("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION", true);
+        collist[33] = new TableColDef("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION", true);
+        collist[34] = new TableColDef("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY", true);
+        collist[35] = new TableColDef("UserPrincipalName", typeof(String), "UserPrincipalName", true);
+        collist[36] = new TableColDef("userAccountControl", typeof(Int32), "userAccountControl", false);
+    }
+
+    public DataTable CreateTable()
+    {
+        DataTable tbl = new DataTable();
+        foreach (TableColDef col in collist)
+        {
+            tbl.Columns.Add(col.ColName, col.datatype);
+        }
+        return tbl;
+    }
+}   // endof: ComputersTable class
 
 // Source: https://msdn.microsoft.com/en-us/library/ff878201.aspx
 public static class DataSetUtilities

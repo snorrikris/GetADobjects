@@ -1,4 +1,7 @@
 ﻿--EXEC clr_GetADusers
 
-EXEC clr_GetADcontacts
+--EXEC clr_GetADcontacts
+
+EXEC clr_GetADcomputers
+
 
