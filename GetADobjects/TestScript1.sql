@@ -4,6 +4,8 @@
 
 --EXEC clr_GetADcomputers
 
-EXEC clr_GetADgroups
+--EXEC clr_GetADgroups
+
+EXEC clr_GetADgroupsEx
 
 

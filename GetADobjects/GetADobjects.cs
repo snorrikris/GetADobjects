@@ -6,6 +6,7 @@ using Microsoft.SqlServer.Server;
 using System.IO;
 using System.DirectoryServices;
 using System.DirectoryServices.AccountManagement;
+using System.Security.Principal;
 
 /*
  * Must run this on the database
@@ -18,12 +19,193 @@ GO
 public partial class StoredProcedures
 {
     [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADgroupsEx()
+    {
+        string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+
+        // Combine the base folder with your specific folder....
+        string specificFolder = Path.Combine(folder, "GetADobjects");
+
+        // Check if folder exists and if not, create it
+        if (!Directory.Exists(specificFolder))
+            Directory.CreateDirectory(specificFolder);
+
+        string filename = Path.Combine(specificFolder, "Log.txt");
+
+        System.IO.StreamWriter file =
+            new System.IO.StreamWriter(filename);
+
+        SearchResultCollection results = null;
+
+        try
+        {
+            GroupsTableEx GroupsTblData = new GroupsTableEx();
+            DataTable tbl = GroupsTblData.CreateTable();
+
+            DataTable mlist = new DataTable();
+            mlist.Columns.Add("GroupDS", typeof(String));
+            mlist.Columns.Add("MemberDS", typeof(String));
+
+            // Bind to the users container.
+            string path = "LDAP://DC=veca,DC=is";
+            DirectoryEntry entry = new DirectoryEntry(path);
+
+            // Create a DirectorySearcher object.
+            DirectorySearcher mySearcher = new DirectorySearcher(entry);
+
+            // Set a filter for users with the name test.
+            mySearcher.Filter = "(objectCategory=group)";
+
+            mySearcher.PageSize = 500;
+
+            // Use the FindAll method to return objects to a 
+            // SearchResultCollection.
+            results = mySearcher.FindAll();
+
+            //int NumItems = 0;
+            //if(results != null)
+            //    NumItems = results.Count;
+            //file.WriteLine("Number of items found = " + NumItems.ToString());
+
+            DataRow row, mrow;
+
+            // Iterate through each SearchResult in the SearchResultCollection.
+            foreach (SearchResult searchResult in results)
+            {
+                DirectoryEntry item = searchResult.GetDirectoryEntry();
+                row = tbl.NewRow();
+
+                row[11] = item.SchemaClassName; // "group";
+                row[12] = item.Guid;
+
+                SecurityIdentifier sid = new SecurityIdentifier(item.Properties["objectSid"][0] as byte[], 0);
+                row[14] = sid.ToString();
+
+                // Source: https://msdn.microsoft.com/en-us/library/ms675935(v=vs.85).aspx
+                Int32 grouptype = 0;
+                if (item.Properties.Contains("grouptype"))
+                    grouptype = (Int32)item.Properties["grouptype"].Value;
+                string GroupCategory = "Distribution", GroupScope = "";
+                bool IsSecurityGroup = ((grouptype & 0x80000000) > 0) ? true : false;
+                if(IsSecurityGroup)
+                    GroupCategory = "Security";
+                if((grouptype & 0x1) == 0x1)
+                    GroupScope = "BuiltIn";
+                else if((grouptype & 0x2) == 0x2)
+                    GroupScope = "Global";
+                else if((grouptype & 0x4) == 0x4)
+                    GroupScope = "DomainLocal";
+                else if((grouptype & 0x8) == 0x8)
+                    GroupScope = "Universal";
+                row["GroupCategory"] = GroupCategory;
+                row["GroupScope"] = GroupScope;
+
+                for (int i = 0; i < GroupsTblData.collist.Length; i++)
+                {
+                    TableColDef coldef = GroupsTblData.collist[i];
+                    if (coldef.IsMethod)
+                        continue;
+                    if (item.Properties.Contains(coldef.ADpropName))
+                    {
+                        try
+                        {
+                            row[i] = item.Properties[coldef.ADpropName].Value;
+                        }
+                        catch (Exception ex)
+                        {
+                            file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                        }
+                    }
+                    else
+                    {
+                        file.WriteLine("Missing property (" + coldef.ADpropName + ") on group ");
+                    }
+                }
+                tbl.Rows.Add(row);
+
+                if (item.Properties.Contains("member"))
+                {
+                    System.DirectoryServices.PropertyValueCollection coll =
+                        item.Properties["member"];
+                    string parent = (string)row["distinguishedname"];
+                    foreach(Object obj in coll)
+                    {
+                        mrow = mlist.NewRow();
+                        mrow[0] = parent;
+                        mrow[1] = obj;
+                        mlist.Rows.Add(mrow);
+                    }
+                }
+
+                // Display the path of the object found.
+                //file.WriteLine("Search properties for {0}", searchResult.Path);
+
+                // Iterate through each property name in each SearchResult.
+                //foreach (string propertyKey in searchResult.Properties.PropertyNames)
+                //{
+                //    // Retrieve the value assigned to that property name 
+                //    // in the ResultPropertyValueCollection.
+                //    ResultPropertyValueCollection valueCollection =
+                //        searchResult.Properties[propertyKey];
+
+                //    // Iterate through values for each property name in each 
+                //    // SearchResult.
+                //    foreach (Object propertyValue in valueCollection)
+                //    {
+                //        // Handle results. Be aware that the following 
+                //        // WriteLine only returns readable results for 
+                //        // properties that are strings.
+                //        file.WriteLine("{0}:{1}", propertyKey, propertyValue.ToString());
+                //    }
+                //}
+            }
+            DataSet ds = new DataSet();
+            ds.Tables.Add(tbl);
+            ds.Tables.Add(mlist);
+            DataSetUtilities.SendDataSet(ds);
+
+            //DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
+            file.WriteLine("COMException: " + exception);
+        }
+        catch (InvalidOperationException)
+        {
+            InvalidOperationException InvOpEx = new InvalidOperationException();
+            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
+        }
+        catch (NotSupportedException)
+        {
+            NotSupportedException NotSuppEx = new NotSupportedException();
+            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+        finally
+        {
+            // To prevent memory leaks, always call 
+            // SearchResultCollection.Dispose() manually.
+            if (null != results)
+            {
+                results.Dispose();
+                results = null;
+            }
+        }
+
+        file.Close();
+    }   // endof: clr_GetADgroupsEx
+
+    [Microsoft.SqlServer.Server.SqlProcedure]
     public static void clr_GetADusers ()
     {
         string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
         // Combine the base folder with your specific folder....
-        string specificFolder = Path.Combine(folder, "CLR_Test3");
+        string specificFolder = Path.Combine(folder, "GetADobjects");
 
         // Check if folder exists and if not, create it
         if (!Directory.Exists(specificFolder))
@@ -47,6 +229,10 @@ public partial class StoredProcedures
 
             PrincipalSearcher ps = new PrincipalSearcher();
             ps.QueryFilter = up;
+
+            // Set page size to overcome the 1000 items limit.
+            DirectorySearcher dsrch = (DirectorySearcher)ps.GetUnderlyingSearcher();
+            dsrch.PageSize = 500;
 
             PrincipalSearchResult<Principal> results = ps.FindAll();
 
@@ -222,6 +408,10 @@ public partial class StoredProcedures
             PrincipalSearcher ps = new PrincipalSearcher();
             ps.QueryFilter = up;
 
+            // Set page size to overcome the 1000 items limit.
+            DirectorySearcher dsrch = (DirectorySearcher)ps.GetUnderlyingSearcher();
+            dsrch.PageSize = 500;
+
             PrincipalSearchResult<Principal> results = ps.FindAll();
 
             if (results != null)
@@ -315,6 +505,10 @@ public partial class StoredProcedures
 
             PrincipalSearcher ps = new PrincipalSearcher();
             ps.QueryFilter = up;
+
+            // Set page size to overcome the 1000 items limit.
+            DirectorySearcher dsrch = (DirectorySearcher)ps.GetUnderlyingSearcher();
+            dsrch.PageSize = 500;
 
             PrincipalSearchResult<Principal> results = ps.FindAll();
 
@@ -470,6 +664,10 @@ public partial class StoredProcedures
 
             PrincipalSearcher ps = new PrincipalSearcher();
             ps.QueryFilter = up;
+
+            // Set page size to overcome the 1000 items limit.
+            DirectorySearcher dsrch = (DirectorySearcher)ps.GetUnderlyingSearcher();
+            dsrch.PageSize = 500;
 
             PrincipalSearchResult<Principal> results = ps.FindAll();
 
@@ -805,6 +1003,44 @@ public class GroupsTable
         return tbl;
     }
 }   // endof: GroupsTable class
+
+public class GroupsTableEx
+{
+    public TableColDef[] collist;
+
+    public GroupsTableEx()
+    {
+        collist = new TableColDef[15];  // <-- SET number of elements to number of cells copied below.!
+
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column in "Contacts" sheet.
+        collist[0] = new TableColDef("Created", typeof(DateTime), "whenCreated", false);
+        collist[1] = new TableColDef("Description", typeof(String), "description", false);
+        collist[2] = new TableColDef("DisplayName", typeof(String), "displayname", false);
+        collist[3] = new TableColDef("DistinguishedName", typeof(String), "distinguishedname", false);
+        collist[4] = new TableColDef("EmailAddress", typeof(String), "mail", false);
+        collist[5] = new TableColDef("GroupCategory", typeof(String), "grouptype", true);
+        collist[6] = new TableColDef("GroupScope", typeof(String), "grouptype", true);
+        collist[7] = new TableColDef("ManagedBy", typeof(String), "managedby", false);
+        collist[8] = new TableColDef("Modified", typeof(DateTime), "whenChanged", false);
+        collist[9] = new TableColDef("Name", typeof(String), "name", false);
+        collist[10] = new TableColDef("ObjectCategory", typeof(String), "objectcategory", false);
+        collist[11] = new TableColDef("ObjectClass", typeof(String), "SchemaClassName", true);
+        collist[12] = new TableColDef("ObjectGUID", typeof(Guid), "Guid", true);
+        collist[13] = new TableColDef("SamAccountName", typeof(String), "samaccountname", false);
+        collist[14] = new TableColDef("SID", typeof(String), "objectsid", true);
+    }
+
+    public DataTable CreateTable()
+    {
+        DataTable tbl = new DataTable();
+        foreach (TableColDef col in collist)
+        {
+            tbl.Columns.Add(col.ColName, col.datatype);
+        }
+        return tbl;
+    }
+}   // endof: GroupsTableEx class
 
 // Source: https://msdn.microsoft.com/en-us/library/ff878201.aspx
 public static class DataSetUtilities
