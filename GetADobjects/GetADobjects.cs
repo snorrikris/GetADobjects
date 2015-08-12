@@ -7,6 +7,7 @@ using System.IO;
 using System.DirectoryServices;
 using System.DirectoryServices.AccountManagement;
 using System.Security.Principal;
+using System.Xml;
 
 /*
  * Must run this on the database
@@ -19,8 +20,10 @@ GO
 public partial class StoredProcedures
 {
     [Microsoft.SqlServer.Server.SqlProcedure]
-    public static void clr_GetADgroupsEx()
+    public static void clr_GetADgroupsEx(out SqlXml MemberList)
     {
+        MemberList = new SqlXml();
+
         string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
         // Combine the base folder with your specific folder....
@@ -39,6 +42,42 @@ public partial class StoredProcedures
 
         try
         {
+            XmlDocument doc = new XmlDocument();
+            //(1) the xml declaration is recommended, but not mandatory
+            XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
+            XmlElement root = doc.DocumentElement;
+            doc.InsertBefore(xmlDeclaration, root);
+
+            //(2) string.Empty makes cleaner code
+            XmlElement body = doc.CreateElement(string.Empty, "body", string.Empty);
+            doc.AppendChild(body);
+
+            //for (int j = 0; j < 10; j++)
+            //{
+            //    XmlElement group = doc.CreateElement(string.Empty, "Group", string.Empty);
+            //    XmlText GrpDS = doc.CreateTextNode("dist.name of group");
+            //    group.AppendChild(GrpDS);
+            //    body.AppendChild(group);
+
+            //    for (int i = 0; i < 5; i++)
+            //    {
+            //        XmlElement member = doc.CreateElement(string.Empty, "Member", string.Empty);
+            //        XmlText MemberDS = doc.CreateTextNode("dist.name of Member" + i.ToString());
+            //        member.AppendChild(MemberDS);
+            //        group.AppendChild(member);
+            //    }
+            //}
+
+            //XmlElement member2 = doc.CreateElement(string.Empty, "Member", string.Empty);
+            //XmlText Member2DS = doc.CreateTextNode("dist.name of Member2");
+            //member2.AppendChild(Member2DS);
+            //group.AppendChild(member2);
+
+            //using (XmlNodeReader xnr = new XmlNodeReader(doc))
+            //{
+            //    MemberList = new SqlXml(xnr);
+            //}
+            
             GroupsTableEx GroupsTblData = new GroupsTableEx();
             DataTable tbl = GroupsTblData.CreateTable();
 
@@ -128,12 +167,24 @@ public partial class StoredProcedures
                     System.DirectoryServices.PropertyValueCollection coll =
                         item.Properties["member"];
                     string parent = (string)row["distinguishedname"];
+                    XmlElement group = doc.CreateElement(string.Empty, "Group", string.Empty);
+                    group.SetAttribute("GrpDS", parent);
+                    //XmlText GrpDS = doc.CreateTextNode(parent);
+                    //group.AppendChild(GrpDS);
+                    body.AppendChild(group);
+
                     foreach(Object obj in coll)
                     {
                         mrow = mlist.NewRow();
                         mrow[0] = parent;
                         mrow[1] = obj;
                         mlist.Rows.Add(mrow);
+                        string GrpMember = (string)obj;
+                        XmlElement member = doc.CreateElement(string.Empty, "Member", string.Empty);
+                        member.SetAttribute("MemberDS", GrpMember);
+                        //XmlText MemberDS = doc.CreateTextNode(GrpMember);
+                        //member.AppendChild(MemberDS);
+                        group.AppendChild(member);
                     }
                 }
 
@@ -165,6 +216,11 @@ public partial class StoredProcedures
             DataSetUtilities.SendDataSet(ds);
 
             //DataSetUtilities.SendDataTable(tbl);
+
+            using (XmlNodeReader xnr = new XmlNodeReader(doc))
+            {
+                MemberList = new SqlXml(xnr);
+            }
         }
         catch (System.Runtime.InteropServices.COMException)
         {
