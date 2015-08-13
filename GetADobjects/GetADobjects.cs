@@ -24,89 +24,34 @@ public partial class StoredProcedures
     {
         MemberList = new SqlXml();
 
-        string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-
-        // Combine the base folder with your specific folder....
-        string specificFolder = Path.Combine(folder, "GetADobjects");
-
-        // Check if folder exists and if not, create it
-        if (!Directory.Exists(specificFolder))
-            Directory.CreateDirectory(specificFolder);
-
-        string filename = Path.Combine(specificFolder, "Log.txt");
-
-        System.IO.StreamWriter file =
-            new System.IO.StreamWriter(filename);
+        System.IO.StreamWriter file = CreateLogFile();
 
         SearchResultCollection results = null;
 
         try
         {
             XmlDocument doc = new XmlDocument();
-            //(1) the xml declaration is recommended, but not mandatory
             XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
             XmlElement root = doc.DocumentElement;
             doc.InsertBefore(xmlDeclaration, root);
-
-            //(2) string.Empty makes cleaner code
             XmlElement body = doc.CreateElement(string.Empty, "body", string.Empty);
             doc.AppendChild(body);
 
-            //for (int j = 0; j < 10; j++)
-            //{
-            //    XmlElement group = doc.CreateElement(string.Empty, "Group", string.Empty);
-            //    XmlText GrpDS = doc.CreateTextNode("dist.name of group");
-            //    group.AppendChild(GrpDS);
-            //    body.AppendChild(group);
-
-            //    for (int i = 0; i < 5; i++)
-            //    {
-            //        XmlElement member = doc.CreateElement(string.Empty, "Member", string.Empty);
-            //        XmlText MemberDS = doc.CreateTextNode("dist.name of Member" + i.ToString());
-            //        member.AppendChild(MemberDS);
-            //        group.AppendChild(member);
-            //    }
-            //}
-
-            //XmlElement member2 = doc.CreateElement(string.Empty, "Member", string.Empty);
-            //XmlText Member2DS = doc.CreateTextNode("dist.name of Member2");
-            //member2.AppendChild(Member2DS);
-            //group.AppendChild(member2);
-
-            //using (XmlNodeReader xnr = new XmlNodeReader(doc))
-            //{
-            //    MemberList = new SqlXml(xnr);
-            //}
-            
             GroupsTableEx GroupsTblData = new GroupsTableEx();
             DataTable tbl = GroupsTblData.CreateTable();
 
-            DataTable mlist = new DataTable();
-            mlist.Columns.Add("GroupDS", typeof(String));
-            mlist.Columns.Add("MemberDS", typeof(String));
-
-            // Bind to the users container.
             string path = "LDAP://DC=veca,DC=is";
             DirectoryEntry entry = new DirectoryEntry(path);
 
-            // Create a DirectorySearcher object.
             DirectorySearcher mySearcher = new DirectorySearcher(entry);
 
-            // Set a filter for users with the name test.
             mySearcher.Filter = "(objectCategory=group)";
 
             mySearcher.PageSize = 500;
 
-            // Use the FindAll method to return objects to a 
-            // SearchResultCollection.
             results = mySearcher.FindAll();
 
-            //int NumItems = 0;
-            //if(results != null)
-            //    NumItems = results.Count;
-            //file.WriteLine("Number of items found = " + NumItems.ToString());
-
-            DataRow row, mrow;
+            DataRow row;
 
             // Iterate through each SearchResult in the SearchResultCollection.
             foreach (SearchResult searchResult in results)
@@ -169,53 +114,18 @@ public partial class StoredProcedures
                     string parent = (string)row["distinguishedname"];
                     XmlElement group = doc.CreateElement(string.Empty, "Group", string.Empty);
                     group.SetAttribute("GrpDS", parent);
-                    //XmlText GrpDS = doc.CreateTextNode(parent);
-                    //group.AppendChild(GrpDS);
                     body.AppendChild(group);
 
                     foreach(Object obj in coll)
                     {
-                        mrow = mlist.NewRow();
-                        mrow[0] = parent;
-                        mrow[1] = obj;
-                        mlist.Rows.Add(mrow);
                         string GrpMember = (string)obj;
                         XmlElement member = doc.CreateElement(string.Empty, "Member", string.Empty);
                         member.SetAttribute("MemberDS", GrpMember);
-                        //XmlText MemberDS = doc.CreateTextNode(GrpMember);
-                        //member.AppendChild(MemberDS);
                         group.AppendChild(member);
                     }
                 }
-
-                // Display the path of the object found.
-                //file.WriteLine("Search properties for {0}", searchResult.Path);
-
-                // Iterate through each property name in each SearchResult.
-                //foreach (string propertyKey in searchResult.Properties.PropertyNames)
-                //{
-                //    // Retrieve the value assigned to that property name 
-                //    // in the ResultPropertyValueCollection.
-                //    ResultPropertyValueCollection valueCollection =
-                //        searchResult.Properties[propertyKey];
-
-                //    // Iterate through values for each property name in each 
-                //    // SearchResult.
-                //    foreach (Object propertyValue in valueCollection)
-                //    {
-                //        // Handle results. Be aware that the following 
-                //        // WriteLine only returns readable results for 
-                //        // properties that are strings.
-                //        file.WriteLine("{0}:{1}", propertyKey, propertyValue.ToString());
-                //    }
-                //}
             }
-            DataSet ds = new DataSet();
-            ds.Tables.Add(tbl);
-            ds.Tables.Add(mlist);
-            DataSetUtilities.SendDataSet(ds);
-
-            //DataSetUtilities.SendDataTable(tbl);
+            DataSetUtilities.SendDataTable(tbl);
 
             using (XmlNodeReader xnr = new XmlNodeReader(doc))
             {
@@ -799,6 +709,24 @@ public partial class StoredProcedures
 
         file.Close();
     }   // endof: clr_GetADcomputers
+
+    public static System.IO.StreamWriter CreateLogFile()
+    {
+        string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+
+        // Combine the base folder with your specific folder....
+        string specificFolder = Path.Combine(folder, "GetADobjects");
+
+        // Check if folder exists and if not, create it
+        if (!Directory.Exists(specificFolder))
+            Directory.CreateDirectory(specificFolder);
+
+        string filename = Path.Combine(specificFolder, "Log.txt");
+
+        System.IO.StreamWriter file =
+            new System.IO.StreamWriter(filename);
+        return file;
+    }
 }   // endof: StoredProcedures partial class
 
 public class TableColDef
