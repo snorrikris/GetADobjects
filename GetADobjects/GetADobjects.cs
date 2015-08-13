@@ -8,6 +8,7 @@ using System.DirectoryServices;
 using System.DirectoryServices.AccountManagement;
 using System.Security.Principal;
 using System.Xml;
+using System.Collections.Generic;
 
 /*
  * Must run this on the database
@@ -19,6 +20,416 @@ GO
 
 public partial class StoredProcedures
 {
+    [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADusersEx()
+    {
+        System.IO.StreamWriter file = CreateLogFile();
+
+        SearchResultCollection results = null;
+
+        try
+        {
+            //GroupsTableEx GroupsTblData = new GroupsTableEx();
+            //DataTable tbl = GroupsTblData.CreateTable();
+
+            string path = "LDAP://DC=veca,DC=is";
+            DirectoryEntry entry = new DirectoryEntry(path);
+
+            DirectorySearcher mySearcher = new DirectorySearcher(entry);
+
+            //mySearcher.Filter = "(objectCategory=contact)";
+            //mySearcher.Filter = "(&(objectCategory=person)(objectClass=contact)(|(sn=Smith)(sn=Johnson)))";
+            mySearcher.Filter = "(&(objectCategory=person)(objectClass=user))";
+
+            mySearcher.PageSize = 500;
+
+            results = mySearcher.FindAll();
+
+            //DataRow row;
+
+            // Iterate through each SearchResult in the SearchResultCollection.
+            foreach (SearchResult searchResult in results)
+            {
+                DirectoryEntry item = searchResult.GetDirectoryEntry();
+                //row = tbl.NewRow();
+
+                //row[11] = item.SchemaClassName; // "group";
+                //row[12] = item.Guid;
+
+                //SecurityIdentifier sid = new SecurityIdentifier(item.Properties["objectSid"][0] as byte[], 0);
+                //row[14] = sid.ToString();
+
+                //if (item.Properties.Contains("grouptype"))
+                //    grouptype = (Int32)item.Properties["grouptype"].Value;
+
+                //for (int i = 0; i < GroupsTblData.collist.Length; i++)
+                //{
+                //    TableColDef coldef = GroupsTblData.collist[i];
+                //    if (coldef.IsMethod)
+                //        continue;
+                //    if (item.Properties.Contains(coldef.ADpropName))
+                //    {
+                //        try
+                //        {
+                //            row[i] = item.Properties[coldef.ADpropName].Value;
+                //        }
+                //        catch (Exception ex)
+                //        {
+                //            file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                //        }
+                //    }
+                //    else
+                //    {
+                //        file.WriteLine("Missing property (" + coldef.ADpropName + ") on group ");
+                //    }
+                //}
+                //tbl.Rows.Add(row);
+
+                // Iterate through each property name in each SearchResult.
+                foreach (string propertyKey in searchResult.Properties.PropertyNames)
+                {
+                    // Retrieve the value assigned to that property name 
+                    // in the ResultPropertyValueCollection.
+                    ResultPropertyValueCollection valueCollection =
+                        searchResult.Properties[propertyKey];
+
+                    // Iterate through values for each property name in each 
+                    // SearchResult.
+                    foreach (Object propertyValue in valueCollection)
+                    {
+                        // Handle results. Be aware that the following 
+                        // WriteLine only returns readable results for 
+                        // properties that are strings.
+                        file.WriteLine("{0}:{1}", propertyKey, propertyValue.ToString());
+                    }
+                }
+            }
+            //DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
+            file.WriteLine("COMException: " + exception);
+        }
+        catch (InvalidOperationException)
+        {
+            InvalidOperationException InvOpEx = new InvalidOperationException();
+            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
+        }
+        catch (NotSupportedException)
+        {
+            NotSupportedException NotSuppEx = new NotSupportedException();
+            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+        finally
+        {
+            // To prevent memory leaks, always call 
+            // SearchResultCollection.Dispose() manually.
+            if (null != results)
+            {
+                results.Dispose();
+                results = null;
+            }
+        }
+
+        file.Close();
+    }   // endof: clr_GetADusersEx
+
+    [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADcontactsEx()
+    {
+        System.IO.StreamWriter file = CreateLogFile();
+
+        SearchResultCollection results = null;
+
+        try
+        {
+            //GroupsTableEx GroupsTblData = new GroupsTableEx();
+            //DataTable tbl = GroupsTblData.CreateTable();
+
+            string path = "LDAP://DC=veca,DC=is";
+            DirectoryEntry entry = new DirectoryEntry(path);
+
+            DirectorySearcher mySearcher = new DirectorySearcher(entry);
+
+            //mySearcher.Filter = "(objectCategory=contact)";
+            //mySearcher.Filter = "(&(objectCategory=person)(objectClass=contact)(|(sn=Smith)(sn=Johnson)))";
+            mySearcher.Filter = "(&(objectCategory=person)(objectClass=contact))";
+
+            mySearcher.PageSize = 500;
+
+            results = mySearcher.FindAll();
+
+            //DataRow row;
+
+            // Iterate through each SearchResult in the SearchResultCollection.
+            foreach (SearchResult searchResult in results)
+            {
+                DirectoryEntry item = searchResult.GetDirectoryEntry();
+                //row = tbl.NewRow();
+
+                //row[11] = item.SchemaClassName; // "group";
+                //row[12] = item.Guid;
+
+                //SecurityIdentifier sid = new SecurityIdentifier(item.Properties["objectSid"][0] as byte[], 0);
+                //row[14] = sid.ToString();
+
+                //if (item.Properties.Contains("grouptype"))
+                //    grouptype = (Int32)item.Properties["grouptype"].Value;
+
+                //for (int i = 0; i < GroupsTblData.collist.Length; i++)
+                //{
+                //    TableColDef coldef = GroupsTblData.collist[i];
+                //    if (coldef.IsMethod)
+                //        continue;
+                //    if (item.Properties.Contains(coldef.ADpropName))
+                //    {
+                //        try
+                //        {
+                //            row[i] = item.Properties[coldef.ADpropName].Value;
+                //        }
+                //        catch (Exception ex)
+                //        {
+                //            file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                //        }
+                //    }
+                //    else
+                //    {
+                //        file.WriteLine("Missing property (" + coldef.ADpropName + ") on group ");
+                //    }
+                //}
+                //tbl.Rows.Add(row);
+
+                // Iterate through each property name in each SearchResult.
+                foreach (string propertyKey in searchResult.Properties.PropertyNames)
+                {
+                    // Retrieve the value assigned to that property name 
+                    // in the ResultPropertyValueCollection.
+                    ResultPropertyValueCollection valueCollection =
+                        searchResult.Properties[propertyKey];
+
+                    // Iterate through values for each property name in each 
+                    // SearchResult.
+                    foreach (Object propertyValue in valueCollection)
+                    {
+                        // Handle results. Be aware that the following 
+                        // WriteLine only returns readable results for 
+                        // properties that are strings.
+                        file.WriteLine("{0}:{1}", propertyKey, propertyValue.ToString());
+                    }
+                }
+            }
+            //DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
+            file.WriteLine("COMException: " + exception);
+        }
+        catch (InvalidOperationException)
+        {
+            InvalidOperationException InvOpEx = new InvalidOperationException();
+            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
+        }
+        catch (NotSupportedException)
+        {
+            NotSupportedException NotSuppEx = new NotSupportedException();
+            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+        finally
+        {
+            // To prevent memory leaks, always call 
+            // SearchResultCollection.Dispose() manually.
+            if (null != results)
+            {
+                results.Dispose();
+                results = null;
+            }
+        }
+
+        file.Close();
+    }   // endof: clr_GetADcontactsEx
+
+    [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADcomputersEx()
+    {
+        System.IO.StreamWriter file = CreateLogFile();
+
+        SearchResultCollection results = null;
+
+        try
+        {
+            ComputerTableEx TblData = new ComputerTableEx();
+            DataTable tbl = TblData.CreateTable();
+
+            string path = "LDAP://DC=veca,DC=is";
+            DirectoryEntry entry = new DirectoryEntry(path);
+
+            DirectorySearcher mySearcher = new DirectorySearcher(entry);
+
+            mySearcher.Filter = "(objectCategory=computer)";
+
+            mySearcher.PageSize = 500;
+
+            results = mySearcher.FindAll();
+
+            DataRow row;
+
+            // Iterate through each SearchResult in the SearchResultCollection.
+            foreach (SearchResult searchResult in results)
+            {
+                DirectoryEntry item = searchResult.GetDirectoryEntry();
+                row = tbl.NewRow();
+
+                //if (item.Properties.Contains("grouptype"))
+                //    grouptype = (Int32)item.Properties["grouptype"].Value;
+
+                UACflags Item_UAC_flags = null;
+
+                for (int i = 0; i < TblData.collist.Length; i++)
+                {
+                    TableColDefEx coldef = TblData.collist[i];
+                    switch(coldef.OPtype)
+                    {
+                        case "Adprop":
+                            if (item.Properties.Contains(coldef.ADpropName))
+                            {
+                                try
+                                {
+                                    row[i] = item.Properties[coldef.ADpropName].Value;
+                                }
+                                catch (Exception ex)
+                                {
+                                    file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                                }
+                            }
+                            break;
+                        case "UAC":
+                            if (Item_UAC_flags == null)
+                            {
+                                Int32 uac = 0;
+                                if (item.Properties.Contains("userAccountControl"))
+                                {
+                                    try
+                                    {
+                                        uac = (Int32)item.Properties["userAccountControl"][0];
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                                    }
+                                }
+                                Item_UAC_flags = new UACflags(uac);
+                            }
+                            row[i] = Item_UAC_flags.GetFlag(coldef.ADpropName);
+                            break;
+                        case "ObjClass":
+                            row[i] = item.SchemaClassName;
+                            break;
+                        case "ObjGuid":
+                            row[i] = item.Guid;
+                            break;
+                        case "filetime":
+                            Int64 time = 0;
+                            if (searchResult.Properties.Contains(coldef.ADpropName))
+                            //if (item.Properties.Contains(coldef.ADpropName))
+                            {
+                                try
+                                {
+                                    //time = (Int64)item.Properties[coldef.ADpropName].Value;
+                                    time = (Int64)searchResult.Properties[coldef.ADpropName][0];
+                                    if(time > 0 && time != 0x7fffffffffffffff)
+                                    {
+                                        row[i] = DateTime.FromFileTimeUtc(time);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                                }
+                            }
+                            break;
+                        case "SID":
+                            if (item.Properties.Contains(coldef.ADpropName))
+                            {
+                                try
+                                {
+                                    SecurityIdentifier sid = new SecurityIdentifier(
+                                        item.Properties[coldef.ADpropName][0] as byte[], 0);
+                                    row[i] = sid.ToString();
+                                }
+                                catch (Exception ex)
+                                {
+                                    file.WriteLine("Exception on AD property (" + coldef.ADpropName + "). Error: " + ex.Message);
+                                }
+                            }
+                            break;
+                    }
+                }
+                tbl.Rows.Add(row);
+
+                // Iterate through each property name in each SearchResult.
+                //foreach (string propertyKey in searchResult.Properties.PropertyNames)
+                //{
+                //    // Retrieve the value assigned to that property name 
+                //    // in the ResultPropertyValueCollection.
+                //    ResultPropertyValueCollection valueCollection =
+                //        searchResult.Properties[propertyKey];
+
+                //    // Iterate through values for each property name in each 
+                //    // SearchResult.
+                //    foreach (Object propertyValue in valueCollection)
+                //    {
+                //        // Handle results. Be aware that the following 
+                //        // WriteLine only returns readable results for 
+                //        // properties that are strings.
+                //        file.WriteLine("{0}:{1}", propertyKey, propertyValue.ToString());
+                //    }
+                //}
+            }
+            DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
+            file.WriteLine("COMException: " + exception);
+        }
+        catch (InvalidOperationException)
+        {
+            InvalidOperationException InvOpEx = new InvalidOperationException();
+            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
+        }
+        catch (NotSupportedException)
+        {
+            NotSupportedException NotSuppEx = new NotSupportedException();
+            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+        finally
+        {
+            // To prevent memory leaks, always call 
+            // SearchResultCollection.Dispose() manually.
+            if (null != results)
+            {
+                results.Dispose();
+                results = null;
+            }
+        }
+
+        file.Close();
+    }   // endof: clr_GetADcomputersEx
+
     [Microsoft.SqlServer.Server.SqlProcedure]
     public static void clr_GetADgroupsEx(out SqlXml MemberList)
     {
@@ -729,6 +1140,131 @@ public partial class StoredProcedures
     }
 }   // endof: StoredProcedures partial class
 
+public class UACflags
+{
+    public Int32 ADobj_flags;
+    public Dictionary<string, Int32> flagsLookup;
+    public UACflags(Int32 UAC_flags)
+    {
+        this.ADobj_flags = UAC_flags;
+        this.flagsLookup = new Dictionary<string, Int32>();
+        this.flagsLookup.Add("SCRIPT", 0x0001);
+        this.flagsLookup.Add("ACCOUNTDISABLE", 0x0002);
+        this.flagsLookup.Add("HOMEDIR_REQUIRED", 0x0008);
+        this.flagsLookup.Add("LOCKOUT", 0x0010);
+        this.flagsLookup.Add("PASSWD_NOTREQD", 0x0020);
+        this.flagsLookup.Add("PASSWD_CANT_CHANGE", 0x0040);
+        this.flagsLookup.Add("ENCRYPTED_TEXT_PWD_ALLOWED", 0x0080);
+        this.flagsLookup.Add("TEMP_DUPLICATE_ACCOUNT", 0x0100);
+        this.flagsLookup.Add("NORMAL_ACCOUNT", 0x0200);
+        this.flagsLookup.Add("INTERDOMAIN_TRUST_ACCOUNT", 0x0800);
+        this.flagsLookup.Add("WORKSTATION_TRUST_ACCOUNT", 0x1000);
+        this.flagsLookup.Add("SERVER_TRUST_ACCOUNT", 0x2000);
+        this.flagsLookup.Add("DONT_EXPIRE_PASSWORD", 0x10000);
+        this.flagsLookup.Add("MNS_LOGON_ACCOUNT", 0x20000);
+        this.flagsLookup.Add("SMARTCARD_REQUIRED", 0x40000);
+        this.flagsLookup.Add("TRUSTED_FOR_DELEGATION", 0x80000);
+        this.flagsLookup.Add("NOT_DELEGATED", 0x100000);
+        this.flagsLookup.Add("USE_DES_KEY_ONLY", 0x200000);
+        this.flagsLookup.Add("DONT_REQ_PREAUTH", 0x400000);
+        this.flagsLookup.Add("PASSWORD_EXPIRED", 0x800000);
+        this.flagsLookup.Add("TRUSTED_TO_AUTH_FOR_DELEGATION", 0x1000000);
+        this.flagsLookup.Add("PARTIAL_SECRETS_ACCOUNT", 0x04000000);
+    }
+
+    public Boolean GetFlag(string UAC_flag)
+    {
+        Boolean ret_flag = false;
+        if(flagsLookup.ContainsKey(UAC_flag))
+        {
+            Int32 mask = flagsLookup[UAC_flag];
+            ret_flag = ((ADobj_flags & mask) != 0) ? true : false;
+            if (UAC_flag == "ACCOUNTDISABLE")
+                ret_flag = !ret_flag;
+        }
+        return ret_flag;
+    }
+}
+
+public class TableColDefEx
+{
+    public string ColName;
+    public Type datatype;
+    public string ADpropName;
+    public string OPtype;
+
+    public TableColDefEx(string ColName, Type datatype, string ADpropName, string OPtype)
+    {
+        this.ColName = ColName;
+        this.datatype = datatype;
+        this.ADpropName = ADpropName;
+        this.OPtype = OPtype;
+    }
+}
+
+public class ComputerTableEx
+{
+    public TableColDefEx[] collist;
+
+    public ComputerTableEx()
+    {
+        collist = new TableColDefEx[41];  // <-- SET number of elements to number of cells copied below.!
+
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column.
+        collist[0] = new TableColDefEx("AccountExpirationDate", typeof(DateTime), "accountexpires", "filetime");
+        collist[1] = new TableColDefEx("AccountLockoutTime", typeof(DateTime), "lockouttime", "filetime");
+        collist[2] = new TableColDefEx("AccountNotDelegated", typeof(Boolean), "NOT_DELEGATED", "UAC");
+        collist[3] = new TableColDefEx("AllowReversiblePasswordEncryption", typeof(Boolean), "ENCRYPTED_TEXT_PWD_ALLOWED", "UAC");
+        collist[4] = new TableColDefEx("BadLogonCount", typeof(Int32), "badpwdcount", "Adprop");
+        collist[5] = new TableColDefEx("CannotChangePassword", typeof(Boolean), "PASSWD_CANT_CHANGE", "UAC");
+        collist[6] = new TableColDefEx("CN", typeof(String), "cn", "Adprop");
+        collist[7] = new TableColDefEx("Created", typeof(DateTime), "whenCreated", "Adprop");
+        collist[8] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
+        collist[9] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
+        collist[10] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[11] = new TableColDefEx("DNSHostName", typeof(String), "dnshostname", "Adprop");
+        collist[12] = new TableColDefEx("DoesNotRequirePreAuth", typeof(Boolean), "DONT_REQ_PREAUTH", "UAC");
+        collist[13] = new TableColDefEx("Enabled", typeof(Boolean), "ACCOUNTDISABLE", "UAC");
+        collist[14] = new TableColDefEx("LastBadPasswordAttempt", typeof(DateTime), "badpasswordtime", "filetime");
+        collist[15] = new TableColDefEx("LastLogonDate", typeof(DateTime), "lastlogontimestamp/lastlogon", "filetime");
+        collist[16] = new TableColDefEx("Location", typeof(String), "location", "Adprop");
+        collist[17] = new TableColDefEx("LockedOut", typeof(Boolean), "LOCKOUT", "UAC");
+        collist[18] = new TableColDefEx("logonCount", typeof(Int32), "logoncount", "Adprop");
+        collist[19] = new TableColDefEx("ManagedBy", typeof(String), "managedby", "Adprop");
+        collist[20] = new TableColDefEx("Modified", typeof(DateTime), "whenChanged", "Adprop");
+        collist[21] = new TableColDefEx("MNSLogonAccount", typeof(Boolean), "MNS_LOGON_ACCOUNT", "UAC");
+        collist[22] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
+        collist[23] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
+        collist[24] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
+        collist[25] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
+        collist[26] = new TableColDefEx("OperatingSystem", typeof(String), "operatingsystem", "Adprop");
+        collist[27] = new TableColDefEx("OperatingSystemServicePack", typeof(String), "operatingsystemservicepack", "Adprop");
+        collist[28] = new TableColDefEx("OperatingSystemVersion", typeof(String), "operatingsystemversion", "Adprop");
+        collist[29] = new TableColDefEx("PasswordExpired", typeof(Boolean), "PASSWORD_EXPIRED", "UAC");
+        collist[30] = new TableColDefEx("PasswordLastSet", typeof(DateTime), "pwdlastset", "filetime");
+        collist[31] = new TableColDefEx("PasswordNeverExpires", typeof(Boolean), "DONT_EXPIRE_PASSWD", "UAC");
+        collist[32] = new TableColDefEx("PasswordNotRequired", typeof(Boolean), "PASSWD_NOTREQD", "UAC");
+        collist[33] = new TableColDefEx("PrimaryGroupID", typeof(Int32), "primarygroupid", "Adprop");
+        collist[34] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname", "Adprop");
+        collist[35] = new TableColDefEx("SID", typeof(String), "objectsid", "SID");
+        collist[36] = new TableColDefEx("SmartcardLogonRequired", typeof(Boolean), "SMARTCARD_REQUIRED", "UAC");
+        collist[37] = new TableColDefEx("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION", "UAC");
+        collist[38] = new TableColDefEx("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION", "UAC");
+        collist[39] = new TableColDefEx("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY", "UAC");
+        collist[40] = new TableColDefEx("userAccountControl", typeof(Int32), "useraccountcontrol", "Adprop");
+    }
+
+    public DataTable CreateTable()
+    {
+        DataTable tbl = new DataTable();
+        foreach (TableColDefEx col in collist)
+        {
+            tbl.Columns.Add(col.ColName, col.datatype);
+        }
+        return tbl;
+    }
+}
 public class TableColDef
 {
     public string ColName;

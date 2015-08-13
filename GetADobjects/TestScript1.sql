@@ -4,7 +4,7 @@
 
 --EXEC clr_GetADcomputers
 
-EXEC clr_GetADgroups
+--EXEC clr_GetADgroups
 
 --DECLARE @Members XML;
 --EXEC clr_GetADgroupsEx @Members OUTPUT;
@@ -27,3 +27,10 @@ EXEC clr_GetADgroups
 
 --INSERT INTO xmltmp VALUES ( @Members );
 --SELECT @Members
+
+EXEC clr_GetADcomputersEx
+
+--EXEC clr_GetADcontactsEx
+
+--EXEC clr_GetADusersEx
+
