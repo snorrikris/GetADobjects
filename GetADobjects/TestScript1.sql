@@ -35,8 +35,25 @@
 --EXEC clr_GetADusersEx
 
 DECLARE @ADpath nvarchar(64) = 'LDAP://DC=veca,DC=is';
-DECLARE @ADfilter nvarchar(64) = '(&(objectCategory=person)(objectClass=user))';
+--DECLARE @ADfilter nvarchar(64) = '(&(objectCategory=person)(objectClass=user))';
+DECLARE @ADfilter nvarchar(64) = '(objectCategory=group)';
 DECLARE @Members XML;
-EXEC clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT
+EXEC clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
+WITH MemberList AS (
+select Tg.Cg.value('@GrpDS', 'nvarchar(256)') as GroupDS,
+		Tm.Cm.value('@MemberDS', 'nvarchar(256)') as MemberDS
+from @Members.nodes('/body') as Tb(Cb)
+  outer apply Tb.Cb.nodes('Group') as Tg(Cg)
+  outer apply Tg.Cg.nodes('Member') AS Tm(Cm)
+)
+SELECT M.*, 
+	G.objectGUID AS GroupGUID,
+	COALESCE(U.objectGUID, GM.objectGUID, C.objectGUID) AS MemberGUID,
+	COALESCE(U.ObjectClass, GM.ObjectClass, C.ObjectClass) AS MemberType
+FROM MemberList M
+LEFT JOIN dbo.Groups G ON M.GroupDS = G.DistinguishedName
+LEFT JOIN dbo.Groups GM ON M.MemberDS = GM.DistinguishedName
+LEFT JOIN dbo.Computers C ON M.MemberDS = C.DistinguishedName
+LEFT JOIN dbo.Users U ON M.MemberDS = U.DistinguishedName;
 
 

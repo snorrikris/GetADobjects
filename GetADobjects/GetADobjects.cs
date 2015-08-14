@@ -28,45 +28,32 @@ public partial class StoredProcedures
         System.IO.StreamWriter file = CreateLogFile();
 
         SearchResultCollection results = null;
-
         try
         {
-            // Use ADfilter parameter to determine the type of AD objects wanted.
-            string ObjType = "";
-            if (ADfilter.Value.Contains("user"))
-                ObjType = "user";
-            else if (ADfilter.Value.Contains("contact"))
-                ObjType = "contact";
-            else if (ADfilter.Value.Contains("computer"))
-                ObjType = "computer";
-            else if (ADfilter.Value.Contains("group"))
-                ObjType = "group";
+            XmlDocument doc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
+            XmlElement root = doc.DocumentElement;
+            doc.InsertBefore(xmlDeclaration, root);
+            XmlElement body = doc.CreateElement(string.Empty, "body", string.Empty);
+            doc.AppendChild(body);
 
-            ADcolsTable TblData = new ADcolsTable(ObjType);
+            ADcolsTable TblData = new ADcolsTable((string)ADfilter);
             DataTable tbl = TblData.CreateTable();
-
-            string path = (string)ADpath; // "LDAP://DC=veca,DC=is";
-            DirectoryEntry entry = new DirectoryEntry(path);
-
-            DirectorySearcher mySearcher = new DirectorySearcher(entry);
-
-            mySearcher.Filter = (string)ADfilter; // "(objectCategory=computer)";
-
-            mySearcher.PageSize = 500;
-
-            results = mySearcher.FindAll();
-
             DataRow row;
 
+            DirectoryEntry entry = new DirectoryEntry((string)ADpath);
+            DirectorySearcher searcher = new DirectorySearcher(entry);
+            searcher.Filter = (string)ADfilter;
+            searcher.PageSize = 500;
+
+            results = searcher.FindAll();
             foreach (SearchResult searchResult in results)
             {
                 DirectoryEntry item = searchResult.GetDirectoryEntry();
                 row = tbl.NewRow();
 
-                //if (item.Properties.Contains("grouptype"))
-                //    grouptype = (Int32)item.Properties["grouptype"].Value;
-
                 UACflags Item_UAC_flags = null;
+                PropertyValueCollection ADGroupType = null;
 
                 for (int i = 0; i < TblData.collist.Length; i++)
                 {
@@ -104,11 +91,46 @@ public partial class StoredProcedures
                         case "SID":
                             row[i] = GetSID(item, coldef.ADpropName);
                             break;
+
+                        case "GrpCat":
+                            if (ADGroupType == null)
+                                ADGroupType = GetADproperty(item, "grouptype");
+                            row[i] = GetGroupCategory(ADGroupType);
+                            break;
+
+                        case "GrpScope":
+                            if (ADGroupType == null)
+                                ADGroupType = GetADproperty(item, "grouptype");
+                            row[i] = GetGroupScope(ADGroupType);
+                            break;
                     }
                 }
                 tbl.Rows.Add(row);
+
+                // Save group members into the Xml document.
+                if (TblData.IsGroup && item.Properties.Contains("member"))
+                {
+                    PropertyValueCollection coll = GetADproperty(item, "member");
+                    string parent = (string)row["distinguishedname"];
+                    XmlElement group = doc.CreateElement(string.Empty, "Group", string.Empty);
+                    group.SetAttribute("GrpDS", parent);
+                    body.AppendChild(group);
+
+                    foreach (Object obj in coll)
+                    {
+                        string GrpMember = (string)obj;
+                        XmlElement member = doc.CreateElement(string.Empty, "Member", string.Empty);
+                        member.SetAttribute("MemberDS", GrpMember);
+                        group.AppendChild(member);
+                    }
+                }
             }
             DataSetUtilities.SendDataTable(tbl);
+
+            using (XmlNodeReader xnr = new XmlNodeReader(doc))
+            {
+                MemberList = new SqlXml(xnr);
+            }
         }
         catch (System.Runtime.InteropServices.COMException)
         {
@@ -139,7 +161,6 @@ public partial class StoredProcedures
                 results = null;
             }
         }
-
         file.Close();
     }   // endof: clr_GetADobjects
 
@@ -1336,6 +1357,36 @@ public partial class StoredProcedures
         }
         return SID;
     }
+
+    private static string GetGroupCategory(PropertyValueCollection ADgrptype)
+    {
+        // Source: https://msdn.microsoft.com/en-us/library/ms675935(v=vs.85).aspx
+        Int32 grouptype = 0;
+        if (ADgrptype != null)
+            grouptype = (Int32)ADgrptype.Value;
+        string GroupCategory = "Distribution";
+        if ((grouptype & 0x80000000) > 0)
+            GroupCategory = "Security";
+        return GroupCategory;
+    }
+
+    private static string GetGroupScope(PropertyValueCollection ADgrptype)
+    {
+        // Source: https://msdn.microsoft.com/en-us/library/ms675935(v=vs.85).aspx
+        Int32 grouptype = 0;
+        if (ADgrptype != null)
+            grouptype = (Int32)ADgrptype.Value;
+        string GroupScope = "";
+        if ((grouptype & 0x1) == 0x1)
+            GroupScope = "BuiltIn";
+        else if ((grouptype & 0x2) == 0x2)
+            GroupScope = "Global";
+        else if ((grouptype & 0x4) == 0x4)
+            GroupScope = "DomainLocal";
+        else if ((grouptype & 0x8) == 0x8)
+            GroupScope = "Universal";
+        return GroupScope;
+    }
 }   // endof: StoredProcedures partial class
 
 public class UACflags
@@ -1403,35 +1454,30 @@ public class TableColDefEx
 public class ADcolsTable
 {
     public TableColDefEx[] collist;
+    //public string ObjType;
+    public bool IsUser, IsContact, IsComputer, IsGroup;
 
-    public ADcolsTable(string ObjType)
+    public ADcolsTable(string ADfilter)
     {
-        switch (ObjType)
-        {
-            case "user":
-                MakeUserColList();
-                break;
-
-            case "contact":
-                MakeContactColList();
-                break;
-
-            case "computer":
-                MakeComputerColList();
-                break;
-
-            case "group":
-                MakeGroupColList();
-                break;
-
-            default:
-                collist = new TableColDefEx[0];
-                break;
-        }
+        IsUser = IsContact = IsComputer = IsGroup = false;
+        // Use ADfilter parameter to determine the type of AD objects wanted.
+        //ObjType = "";
+        if (ADfilter.Contains("user"))
+            MakeUserColList();
+        else if (ADfilter.Contains("contact"))
+            MakeContactColList();
+        else if (ADfilter.Contains("computer"))
+            MakeComputerColList();
+        else if (ADfilter.Contains("group"))
+            MakeGroupColList();
+        else
+            collist = new TableColDefEx[0];
     }
 
     private void MakeUserColList()
     {
+        //ObjType = "user";
+        IsUser = true;
         collist = new TableColDefEx[66];  // <-- SET number of elements to number of cells copied below.!
 
         // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
@@ -1506,11 +1552,14 @@ public class ADcolsTable
 
     private void MakeContactColList()
     {
-
+        //ObjType = "contact";
+        IsContact = true;
     }
 
     private void MakeComputerColList()
     {
+        //ObjType = "computer";
+        IsComputer = true;
         collist = new TableColDefEx[41];  // <-- SET number of elements to number of cells copied below.!
 
         // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
@@ -1560,7 +1609,27 @@ public class ADcolsTable
 
     private void MakeGroupColList()
     {
+        //ObjType = "group";
+        IsGroup = true;
+        collist = new TableColDefEx[15];  // <-- SET number of elements to number of cells copied below.!
 
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column.
+        collist[0] = new TableColDefEx("Created", typeof(DateTime), "whenCreated", "Adprop");
+        collist[1] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
+        collist[2] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
+        collist[3] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[4] = new TableColDefEx("EmailAddress", typeof(String), "mail", "Adprop");
+        collist[5] = new TableColDefEx("GroupCategory", typeof(String), "grouptype", "GrpCat");
+        collist[6] = new TableColDefEx("GroupScope", typeof(String), "grouptype", "GrpScope");
+        collist[7] = new TableColDefEx("ManagedBy", typeof(String), "managedby", "Adprop");
+        collist[8] = new TableColDefEx("Modified", typeof(DateTime), "whenChanged", "Adprop");
+        collist[9] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
+        collist[10] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
+        collist[11] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
+        collist[12] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
+        collist[13] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname", "Adprop");
+        collist[14] = new TableColDefEx("SID", typeof(String), "objectsid", "SID");
     }
 
     public DataTable CreateTable()
