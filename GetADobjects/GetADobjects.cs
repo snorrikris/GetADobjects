@@ -1561,6 +1561,44 @@ public class ADcolsTable
     private void MakeContactColList()
     {
         IsContact = true;
+        collist = new TableColDefEx[34];  // <-- SET number of elements to number of cells copied below.!
+
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column.
+        collist[0] = new TableColDefEx("City", typeof(String), "l", "Adprop");
+        collist[1] = new TableColDefEx("CN", typeof(String), "cn", "Adprop");
+        collist[2] = new TableColDefEx("Company", typeof(String), "company", "Adprop");
+        collist[3] = new TableColDefEx("Country", typeof(String), "co", "Adprop");
+        collist[4] = new TableColDefEx("Created", typeof(DateTime), "whencreated", "Adprop");
+        collist[5] = new TableColDefEx("Department", typeof(String), "department", "Adprop");
+        collist[6] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
+        collist[7] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
+        collist[8] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[9] = new TableColDefEx("Division", typeof(String), "division", "Adprop");
+        collist[10] = new TableColDefEx("EmailAddress", typeof(String), "mail", "Adprop");
+        collist[11] = new TableColDefEx("EmployeeID", typeof(String), "employeeid", "Adprop");
+        collist[12] = new TableColDefEx("EmployeeNumber", typeof(String), "employeenumber", "Adprop");
+        collist[13] = new TableColDefEx("Fax", typeof(String), "facsimileTelephoneNumber", "Adprop");
+        collist[14] = new TableColDefEx("GivenName", typeof(String), "givenname", "Adprop");
+        collist[15] = new TableColDefEx("HomePage", typeof(String), "wwwhomepage", "Adprop");
+        collist[16] = new TableColDefEx("HomePhone", typeof(String), "homephone", "Adprop");
+        collist[17] = new TableColDefEx("Initials", typeof(String), "initials", "Adprop");
+        collist[18] = new TableColDefEx("Manager", typeof(String), "manager", "Adprop");
+        collist[19] = new TableColDefEx("MobilePhone", typeof(String), "mobile", "Adprop");
+        collist[20] = new TableColDefEx("Modified", typeof(DateTime), "whenchanged", "Adprop");
+        collist[21] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
+        collist[22] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
+        collist[23] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
+        collist[24] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
+        collist[25] = new TableColDefEx("Office", typeof(String), "physicalDeliveryOfficeName", "Adprop");
+        collist[26] = new TableColDefEx("OfficePhone", typeof(String), "telephonenumber", "Adprop");
+        collist[27] = new TableColDefEx("Pager", typeof(String), "pager", "Adprop");
+        collist[28] = new TableColDefEx("POBox", typeof(String), "postofficebox", "Adprop");
+        collist[29] = new TableColDefEx("PostalCode", typeof(String), "postalcode", "Adprop");
+        collist[30] = new TableColDefEx("State", typeof(String), "st", "Adprop");
+        collist[31] = new TableColDefEx("StreetAddress", typeof(String), "streetaddress", "Adprop");
+        collist[32] = new TableColDefEx("Surname", typeof(String), "sn", "Adprop");
+        collist[33] = new TableColDefEx("Title", typeof(String), "title", "Adprop");
     }
 
     private void MakeComputerColList()
