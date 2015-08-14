@@ -112,17 +112,7 @@ public partial class StoredProcedures
                 {
                     PropertyValueCollection coll = GetADproperty(item, "member");
                     string parent = (string)row["distinguishedname"];
-                    XmlElement group = doc.CreateElement(string.Empty, "Group", string.Empty);
-                    group.SetAttribute("GrpDS", parent);
-                    body.AppendChild(group);
-
-                    foreach (Object obj in coll)
-                    {
-                        string GrpMember = (string)obj;
-                        XmlElement member = doc.CreateElement(string.Empty, "Member", string.Empty);
-                        member.SetAttribute("MemberDS", GrpMember);
-                        group.AppendChild(member);
-                    }
+                    SaveGroupMembersToXml(doc, body, parent, coll);
                 }
             }
             DataSetUtilities.SendDataTable(tbl);
@@ -153,12 +143,10 @@ public partial class StoredProcedures
         }
         finally
         {
-            // To prevent memory leaks, always call 
-            // SearchResultCollection.Dispose() manually.
             if (null != results)
             {
-                results.Dispose();
-                results = null;
+                results.Dispose();  // To prevent memory leaks, always call 
+                results = null;     // SearchResultCollection.Dispose() manually.
             }
         }
         file.Close();
@@ -1387,6 +1375,29 @@ public partial class StoredProcedures
             GroupScope = "Universal";
         return GroupScope;
     }
+
+    public static void SaveGroupMembersToXml(XmlDocument doc, XmlElement body, string ParentDS, 
+        PropertyValueCollection GroupMembers)
+    {
+        try
+        {
+            XmlElement group = doc.CreateElement(string.Empty, "Group", string.Empty);
+            group.SetAttribute("GrpDS", ParentDS);
+            body.AppendChild(group);
+
+            foreach (Object obj in GroupMembers)
+            {
+                string GrpMember = (string)obj;
+                XmlElement member = doc.CreateElement(string.Empty, "Member", string.Empty);
+                member.SetAttribute("MemberDS", GrpMember);
+                group.AppendChild(member);
+            }
+        }
+        catch(Exception ex)
+        {
+
+        }
+    }
 }   // endof: StoredProcedures partial class
 
 public class UACflags
@@ -1454,14 +1465,12 @@ public class TableColDefEx
 public class ADcolsTable
 {
     public TableColDefEx[] collist;
-    //public string ObjType;
     public bool IsUser, IsContact, IsComputer, IsGroup;
 
     public ADcolsTable(string ADfilter)
     {
         IsUser = IsContact = IsComputer = IsGroup = false;
         // Use ADfilter parameter to determine the type of AD objects wanted.
-        //ObjType = "";
         if (ADfilter.Contains("user"))
             MakeUserColList();
         else if (ADfilter.Contains("contact"))
@@ -1476,7 +1485,6 @@ public class ADcolsTable
 
     private void MakeUserColList()
     {
-        //ObjType = "user";
         IsUser = true;
         collist = new TableColDefEx[66];  // <-- SET number of elements to number of cells copied below.!
 
@@ -1552,13 +1560,11 @@ public class ADcolsTable
 
     private void MakeContactColList()
     {
-        //ObjType = "contact";
         IsContact = true;
     }
 
     private void MakeComputerColList()
     {
-        //ObjType = "computer";
         IsComputer = true;
         collist = new TableColDefEx[41];  // <-- SET number of elements to number of cells copied below.!
 
@@ -1609,7 +1615,6 @@ public class ADcolsTable
 
     private void MakeGroupColList()
     {
-        //ObjType = "group";
         IsGroup = true;
         collist = new TableColDefEx[15];  // <-- SET number of elements to number of cells copied below.!
 
