@@ -21,6 +21,129 @@ GO
 public partial class StoredProcedures
 {
     [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADobjects(SqlString ADpath, SqlString ADfilter, out SqlXml MemberList)
+    {
+        MemberList = new SqlXml();
+
+        System.IO.StreamWriter file = CreateLogFile();
+
+        SearchResultCollection results = null;
+
+        try
+        {
+            // Use ADfilter parameter to determine the type of AD objects wanted.
+            string ObjType = "";
+            if (ADfilter.Value.Contains("user"))
+                ObjType = "user";
+            else if (ADfilter.Value.Contains("contact"))
+                ObjType = "contact";
+            else if (ADfilter.Value.Contains("computer"))
+                ObjType = "computer";
+            else if (ADfilter.Value.Contains("group"))
+                ObjType = "group";
+
+            ADcolsTable TblData = new ADcolsTable(ObjType);
+            DataTable tbl = TblData.CreateTable();
+
+            string path = (string)ADpath; // "LDAP://DC=veca,DC=is";
+            DirectoryEntry entry = new DirectoryEntry(path);
+
+            DirectorySearcher mySearcher = new DirectorySearcher(entry);
+
+            mySearcher.Filter = (string)ADfilter; // "(objectCategory=computer)";
+
+            mySearcher.PageSize = 500;
+
+            results = mySearcher.FindAll();
+
+            DataRow row;
+
+            foreach (SearchResult searchResult in results)
+            {
+                DirectoryEntry item = searchResult.GetDirectoryEntry();
+                row = tbl.NewRow();
+
+                //if (item.Properties.Contains("grouptype"))
+                //    grouptype = (Int32)item.Properties["grouptype"].Value;
+
+                UACflags Item_UAC_flags = null;
+
+                for (int i = 0; i < TblData.collist.Length; i++)
+                {
+                    TableColDefEx coldef = TblData.collist[i];
+                    switch(coldef.OPtype)
+                    {
+                        case "Adprop":
+                            PropertyValueCollection prop = GetADproperty(item, coldef.ADpropName);
+                            if (prop != null)
+                                row[i] = prop.Value;
+                            break;
+
+                        case "UAC":
+                            if (Item_UAC_flags == null)
+                                Item_UAC_flags = new UACflags(Get_userAccountControl(item));
+                            row[i] = Item_UAC_flags.GetFlag(coldef.ADpropName);
+                            break;
+
+                        case "ObjClass":
+                            row[i] = item.SchemaClassName;
+                            break;
+
+                        case "ObjGuid":
+                            row[i] = item.Guid;
+                            break;
+
+                        case "filetime":
+                            Int64 time = GetFileTime(searchResult, coldef.ADpropName);
+                            if(time > 0 && time != 0x7fffffffffffffff)
+                            {
+                                row[i] = DateTime.FromFileTimeUtc(time);
+                            }
+                            break;
+
+                        case "SID":
+                            row[i] = GetSID(item, coldef.ADpropName);
+                            break;
+                    }
+                }
+                tbl.Rows.Add(row);
+            }
+            DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
+            file.WriteLine("COMException: " + exception);
+        }
+        catch (InvalidOperationException)
+        {
+            InvalidOperationException InvOpEx = new InvalidOperationException();
+            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
+        }
+        catch (NotSupportedException)
+        {
+            NotSupportedException NotSuppEx = new NotSupportedException();
+            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+        finally
+        {
+            // To prevent memory leaks, always call 
+            // SearchResultCollection.Dispose() manually.
+            if (null != results)
+            {
+                results.Dispose();
+                results = null;
+            }
+        }
+
+        file.Close();
+    }   // endof: clr_GetADobjects
+
+    [Microsoft.SqlServer.Server.SqlProcedure]
     public static void clr_GetADusersEx()
     {
         System.IO.StreamWriter file = CreateLogFile();
@@ -340,11 +463,9 @@ public partial class StoredProcedures
                         case "filetime":
                             Int64 time = 0;
                             if (searchResult.Properties.Contains(coldef.ADpropName))
-                            //if (item.Properties.Contains(coldef.ADpropName))
                             {
                                 try
                                 {
-                                    //time = (Int64)item.Properties[coldef.ADpropName].Value;
                                     time = (Int64)searchResult.Properties[coldef.ADpropName][0];
                                     if(time > 0 && time != 0x7fffffffffffffff)
                                     {
@@ -1123,20 +1244,97 @@ public partial class StoredProcedures
 
     public static System.IO.StreamWriter CreateLogFile()
     {
-        string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        System.IO.StreamWriter file = null;
+        try
+        {
+            string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
-        // Combine the base folder with your specific folder....
-        string specificFolder = Path.Combine(folder, "GetADobjects");
+            // Combine the base folder with your specific folder....
+            string specificFolder = Path.Combine(folder, "GetADobjects");
 
-        // Check if folder exists and if not, create it
-        if (!Directory.Exists(specificFolder))
-            Directory.CreateDirectory(specificFolder);
+            // Check if folder exists and if not, create it
+            if (!Directory.Exists(specificFolder))
+                Directory.CreateDirectory(specificFolder);
 
-        string filename = Path.Combine(specificFolder, "Log.txt");
+            string filename = Path.Combine(specificFolder, "Log.txt");
 
-        System.IO.StreamWriter file =
-            new System.IO.StreamWriter(filename);
+            file = new System.IO.StreamWriter(filename);
+        }
+        catch(Exception ex)
+        {
+            string Msg = "Exception in CreateLogFile: " + ex.Message;
+        }
         return file;
+    }
+
+    private static PropertyValueCollection GetADproperty(DirectoryEntry item, string ADpropName)
+    {
+        PropertyValueCollection prop = null;
+        if (item.Properties.Contains(ADpropName))
+        {
+            try
+            {
+                prop = item.Properties[ADpropName];
+            }
+            catch (Exception ex)
+            {
+                //file.WriteLine("Exception on AD property (" + ADpropName + "). Error: " + ex.Message);
+            }
+        }
+        return prop;
+    }
+
+    private static Int32 Get_userAccountControl(DirectoryEntry item)
+    {
+        Int32 uac = 0;
+        if (item.Properties.Contains("userAccountControl"))
+        {
+            try
+            {
+                uac = (Int32)item.Properties["userAccountControl"][0];
+            }
+            catch (Exception ex)
+            {
+                //file.WriteLine("Exception on AD property (" + ADpropName + "). Error: " + ex.Message);
+            }
+        }
+        return uac;
+    }
+
+    private static Int64 GetFileTime(SearchResult sr, string ADpropName)
+    {
+        Int64 time = 0;
+        if (sr.Properties.Contains(ADpropName))
+        {
+            try
+            {
+                time = (Int64)sr.Properties[ADpropName][0];
+            }
+            catch (Exception ex)
+            {
+                //file.WriteLine("Exception on AD property (" + ADpropName + "). Error: " + ex.Message);
+            }
+        }
+        return time;
+    }
+
+    private static string GetSID(DirectoryEntry item, string ADpropName)
+    {
+        string SID = "";
+        if (item.Properties.Contains(ADpropName))
+        {
+            try
+            {
+                SecurityIdentifier sid = new SecurityIdentifier(
+                    item.Properties[ADpropName][0] as byte[], 0);
+                SID = sid.ToString();
+            }
+            catch (Exception ex)
+            {
+                //file.WriteLine("Exception on AD property (" + ADpropName + "). Error: " + ex.Message);
+            }
+        }
+        return SID;
     }
 }   // endof: StoredProcedures partial class
 
@@ -1199,6 +1397,180 @@ public class TableColDefEx
         this.datatype = datatype;
         this.ADpropName = ADpropName;
         this.OPtype = OPtype;
+    }
+}
+
+public class ADcolsTable
+{
+    public TableColDefEx[] collist;
+
+    public ADcolsTable(string ObjType)
+    {
+        switch (ObjType)
+        {
+            case "user":
+                MakeUserColList();
+                break;
+
+            case "contact":
+                MakeContactColList();
+                break;
+
+            case "computer":
+                MakeComputerColList();
+                break;
+
+            case "group":
+                MakeGroupColList();
+                break;
+
+            default:
+                collist = new TableColDefEx[0];
+                break;
+        }
+    }
+
+    private void MakeUserColList()
+    {
+        collist = new TableColDefEx[66];  // <-- SET number of elements to number of cells copied below.!
+
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column.
+        collist[0] = new TableColDefEx("AccountExpirationDate", typeof(DateTime), "accountexpires","filetime");
+        collist[1] = new TableColDefEx("AccountLockoutTime", typeof(DateTime), "lockouttime","filetime");
+        collist[2] = new TableColDefEx("AccountNotDelegated", typeof(Boolean), "NOT_DELEGATED","UAC");
+        collist[3] = new TableColDefEx("AllowReversiblePasswordEncryption", typeof(Boolean), "ENCRYPTED_TEXT_PWD_ALLOWED","UAC");
+        collist[4] = new TableColDefEx("BadLogonCount", typeof(Int32), "badpwdcount","Adprop");
+        collist[5] = new TableColDefEx("CannotChangePassword", typeof(Boolean), "PASSWD_CANT_CHANGE","UAC");
+        collist[6] = new TableColDefEx("City", typeof(String), "l","Adprop");
+        collist[7] = new TableColDefEx("CN", typeof(String), "cn","Adprop");
+        collist[8] = new TableColDefEx("Company", typeof(String), "company","Adprop");
+        collist[9] = new TableColDefEx("Country", typeof(String), "co","Adprop");
+        collist[10] = new TableColDefEx("Created", typeof(DateTime), "whencreated","Adprop");
+        collist[11] = new TableColDefEx("Department", typeof(String), "department","Adprop");
+        collist[12] = new TableColDefEx("Description", typeof(String), "description","Adprop");
+        collist[13] = new TableColDefEx("DisplayName", typeof(String), "displayname","Adprop");
+        collist[14] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname","Adprop");
+        collist[15] = new TableColDefEx("Division", typeof(String), "division","Adprop");
+        collist[16] = new TableColDefEx("DoesNotRequirePreAuth", typeof(Boolean), "DONT_REQ_PREAUTH","UAC");
+        collist[17] = new TableColDefEx("EmailAddress", typeof(String), "mail","Adprop");
+        collist[18] = new TableColDefEx("EmployeeID", typeof(String), "employeeid","Adprop");
+        collist[19] = new TableColDefEx("EmployeeNumber", typeof(String), "employeenumber","Adprop");
+        collist[20] = new TableColDefEx("Enabled", typeof(Boolean), "ACCOUNTDISABLE","UAC");
+        collist[21] = new TableColDefEx("Fax", typeof(String), "facsimileTelephoneNumber","Adprop");
+        collist[22] = new TableColDefEx("GivenName", typeof(String), "givenname","Adprop");
+        collist[23] = new TableColDefEx("HomeDirectory", typeof(String), "homedirectory","Adprop");
+        collist[24] = new TableColDefEx("HomedirRequired", typeof(Boolean), "HOMEDIR_REQUIRED","UAC");
+        collist[25] = new TableColDefEx("HomeDrive", typeof(String), "homedrive","Adprop");
+        collist[26] = new TableColDefEx("HomePage", typeof(String), "wwwhomepage","Adprop");
+        collist[27] = new TableColDefEx("HomePhone", typeof(String), "homephone","Adprop");
+        collist[28] = new TableColDefEx("Initials", typeof(String), "initials","Adprop");
+        collist[29] = new TableColDefEx("LastBadPasswordAttempt", typeof(DateTime), "badpasswordtime","filetime");
+        collist[30] = new TableColDefEx("LastLogonDate", typeof(DateTime), "lastlogon","filetime");
+        collist[31] = new TableColDefEx("LockedOut", typeof(Boolean), "LOCKOUT","UAC");
+        collist[32] = new TableColDefEx("LogonCount", typeof(Int32), "logoncount","Adprop");
+        collist[33] = new TableColDefEx("LogonWorkstations", typeof(String), "userworkstations","Adprop");
+        collist[34] = new TableColDefEx("Manager", typeof(String), "manager","Adprop");
+        collist[35] = new TableColDefEx("MNSLogonAccount", typeof(Boolean), "MNS_LOGON_ACCOUNT","UAC");
+        collist[36] = new TableColDefEx("MobilePhone", typeof(String), "mobile","Adprop");
+        collist[37] = new TableColDefEx("Modified", typeof(DateTime), "whenchanged","Adprop");
+        collist[38] = new TableColDefEx("Name", typeof(String), "name","Adprop");
+        collist[39] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory","Adprop");
+        collist[40] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName","ObjClass");
+        collist[41] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid","ObjGuid");
+        collist[42] = new TableColDefEx("Office", typeof(String), "physicalDeliveryOfficeName","Adprop");
+        collist[43] = new TableColDefEx("OfficePhone", typeof(String), "telephonenumber","Adprop");
+        collist[44] = new TableColDefEx("Pager", typeof(String), "pager","Adprop");
+        collist[45] = new TableColDefEx("PasswordExpired", typeof(Boolean), "PASSWORD_EXPIRED","UAC");
+        collist[46] = new TableColDefEx("PasswordLastSet", typeof(DateTime), "pwdlastset","filetime");
+        collist[47] = new TableColDefEx("PasswordNeverExpires", typeof(Boolean), "DONT_EXPIRE_PASSWD","UAC");
+        collist[48] = new TableColDefEx("PasswordNotRequired", typeof(Boolean), "PASSWD_NOTREQD","UAC");
+        collist[49] = new TableColDefEx("POBox", typeof(String), "postofficebox","Adprop");
+        collist[50] = new TableColDefEx("PostalCode", typeof(String), "postalcode","Adprop");
+        collist[51] = new TableColDefEx("PrimaryGroupID", typeof(Int32), "primarygroupid","Adprop");
+        collist[52] = new TableColDefEx("ProfilePath", typeof(String), "profilepath","Adprop");
+        collist[53] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname","Adprop");
+        collist[54] = new TableColDefEx("ScriptPath", typeof(String), "scriptpath","Adprop");
+        collist[55] = new TableColDefEx("SID", typeof(String), "objectsid","SID");
+        collist[56] = new TableColDefEx("SmartcardLogonRequired", typeof(Boolean), "SMARTCARD_REQUIRED","UAC");
+        collist[57] = new TableColDefEx("State", typeof(String), "st","Adprop");
+        collist[58] = new TableColDefEx("StreetAddress", typeof(String), "streetaddress","Adprop");
+        collist[59] = new TableColDefEx("Surname", typeof(String), "sn","Adprop");
+        collist[60] = new TableColDefEx("Title", typeof(String), "title","Adprop");
+        collist[61] = new TableColDefEx("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION","UAC");
+        collist[62] = new TableColDefEx("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION","UAC");
+        collist[63] = new TableColDefEx("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY","UAC");
+        collist[64] = new TableColDefEx("UserPrincipalName", typeof(String), "userprincipalname","Adprop");
+        collist[65] = new TableColDefEx("userAccountControl", typeof(Int32), "useraccountcontrol","Adprop");
+    }
+
+    private void MakeContactColList()
+    {
+
+    }
+
+    private void MakeComputerColList()
+    {
+        collist = new TableColDefEx[41];  // <-- SET number of elements to number of cells copied below.!
+
+        // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
+        // Copy/Paste all cells from "ColListDef" column.
+        collist[0] = new TableColDefEx("AccountExpirationDate", typeof(DateTime), "accountexpires", "filetime");
+        collist[1] = new TableColDefEx("AccountLockoutTime", typeof(DateTime), "lockouttime", "filetime");
+        collist[2] = new TableColDefEx("AccountNotDelegated", typeof(Boolean), "NOT_DELEGATED", "UAC");
+        collist[3] = new TableColDefEx("AllowReversiblePasswordEncryption", typeof(Boolean), "ENCRYPTED_TEXT_PWD_ALLOWED", "UAC");
+        collist[4] = new TableColDefEx("BadLogonCount", typeof(Int32), "badpwdcount", "Adprop");
+        collist[5] = new TableColDefEx("CannotChangePassword", typeof(Boolean), "PASSWD_CANT_CHANGE", "UAC");
+        collist[6] = new TableColDefEx("CN", typeof(String), "cn", "Adprop");
+        collist[7] = new TableColDefEx("Created", typeof(DateTime), "whenCreated", "Adprop");
+        collist[8] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
+        collist[9] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
+        collist[10] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[11] = new TableColDefEx("DNSHostName", typeof(String), "dnshostname", "Adprop");
+        collist[12] = new TableColDefEx("DoesNotRequirePreAuth", typeof(Boolean), "DONT_REQ_PREAUTH", "UAC");
+        collist[13] = new TableColDefEx("Enabled", typeof(Boolean), "ACCOUNTDISABLE", "UAC");
+        collist[14] = new TableColDefEx("LastBadPasswordAttempt", typeof(DateTime), "badpasswordtime", "filetime");
+        collist[15] = new TableColDefEx("LastLogonDate", typeof(DateTime), "lastlogontimestamp/lastlogon", "filetime");
+        collist[16] = new TableColDefEx("Location", typeof(String), "location", "Adprop");
+        collist[17] = new TableColDefEx("LockedOut", typeof(Boolean), "LOCKOUT", "UAC");
+        collist[18] = new TableColDefEx("logonCount", typeof(Int32), "logoncount", "Adprop");
+        collist[19] = new TableColDefEx("ManagedBy", typeof(String), "managedby", "Adprop");
+        collist[20] = new TableColDefEx("Modified", typeof(DateTime), "whenChanged", "Adprop");
+        collist[21] = new TableColDefEx("MNSLogonAccount", typeof(Boolean), "MNS_LOGON_ACCOUNT", "UAC");
+        collist[22] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
+        collist[23] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
+        collist[24] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
+        collist[25] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
+        collist[26] = new TableColDefEx("OperatingSystem", typeof(String), "operatingsystem", "Adprop");
+        collist[27] = new TableColDefEx("OperatingSystemServicePack", typeof(String), "operatingsystemservicepack", "Adprop");
+        collist[28] = new TableColDefEx("OperatingSystemVersion", typeof(String), "operatingsystemversion", "Adprop");
+        collist[29] = new TableColDefEx("PasswordExpired", typeof(Boolean), "PASSWORD_EXPIRED", "UAC");
+        collist[30] = new TableColDefEx("PasswordLastSet", typeof(DateTime), "pwdlastset", "filetime");
+        collist[31] = new TableColDefEx("PasswordNeverExpires", typeof(Boolean), "DONT_EXPIRE_PASSWD", "UAC");
+        collist[32] = new TableColDefEx("PasswordNotRequired", typeof(Boolean), "PASSWD_NOTREQD", "UAC");
+        collist[33] = new TableColDefEx("PrimaryGroupID", typeof(Int32), "primarygroupid", "Adprop");
+        collist[34] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname", "Adprop");
+        collist[35] = new TableColDefEx("SID", typeof(String), "objectsid", "SID");
+        collist[36] = new TableColDefEx("SmartcardLogonRequired", typeof(Boolean), "SMARTCARD_REQUIRED", "UAC");
+        collist[37] = new TableColDefEx("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION", "UAC");
+        collist[38] = new TableColDefEx("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION", "UAC");
+        collist[39] = new TableColDefEx("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY", "UAC");
+        collist[40] = new TableColDefEx("userAccountControl", typeof(Int32), "useraccountcontrol", "Adprop");
+    }
+
+    private void MakeGroupColList()
+    {
+
+    }
+
+    public DataTable CreateTable()
+    {
+        DataTable tbl = new DataTable();
+        foreach (TableColDefEx col in collist)
+        {
+            tbl.Columns.Add(col.ColName, col.datatype);
+        }
+        return tbl;
     }
 }
 
@@ -1265,6 +1637,7 @@ public class ComputerTableEx
         return tbl;
     }
 }
+
 public class TableColDef
 {
     public string ColName;

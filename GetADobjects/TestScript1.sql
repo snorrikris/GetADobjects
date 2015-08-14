@@ -28,9 +28,15 @@
 --INSERT INTO xmltmp VALUES ( @Members );
 --SELECT @Members
 
-EXEC clr_GetADcomputersEx
+--EXEC clr_GetADcomputersEx
 
 --EXEC clr_GetADcontactsEx
 
 --EXEC clr_GetADusersEx
+
+DECLARE @ADpath nvarchar(64) = 'LDAP://DC=veca,DC=is';
+DECLARE @ADfilter nvarchar(64) = '(&(objectCategory=person)(objectClass=user))';
+DECLARE @Members XML;
+EXEC clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT
+
 
