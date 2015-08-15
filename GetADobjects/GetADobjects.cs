@@ -23,6 +23,9 @@ public partial class StoredProcedures
     [Microsoft.SqlServer.Server.SqlProcedure]
     public static void clr_GetADobjects(SqlString ADpath, SqlString ADfilter, out SqlXml MemberList)
     {
+        // Filter syntax: https://msdn.microsoft.com/en-us/library/aa746475(v=vs.85).aspx
+        // AD attributes: https://msdn.microsoft.com/en-us/library/ms675089(v=vs.85).aspx
+
         MemberList = new SqlXml();
 
         System.IO.StreamWriter file = CreateLogFile();
@@ -303,6 +306,8 @@ public partial class StoredProcedures
 
 public class UACflags
 {
+    // Source: https://support.microsoft.com/en-us/kb/305144
+    // and: http://www.selfadsi.org/ads-attributes/user-userAccountControl.htm
     public Int32 ADobj_flags;
     public Dictionary<string, Int32> flagsLookup;
     public UACflags(Int32 UAC_flags)
@@ -391,72 +396,72 @@ public class ADcolsTable
 
         // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
         // Copy/Paste all cells from "ColListDef" column.
-        collist[0] = new TableColDefEx("AccountExpirationDate", typeof(DateTime), "accountexpires","filetime");
-        collist[1] = new TableColDefEx("AccountLockoutTime", typeof(DateTime), "lockouttime","filetime");
-        collist[2] = new TableColDefEx("AccountNotDelegated", typeof(Boolean), "NOT_DELEGATED","UAC");
-        collist[3] = new TableColDefEx("AllowReversiblePasswordEncryption", typeof(Boolean), "ENCRYPTED_TEXT_PWD_ALLOWED","UAC");
-        collist[4] = new TableColDefEx("BadLogonCount", typeof(Int32), "badpwdcount","Adprop");
-        collist[5] = new TableColDefEx("CannotChangePassword", typeof(Boolean), "PASSWD_CANT_CHANGE","UAC");
-        collist[6] = new TableColDefEx("City", typeof(String), "l","Adprop");
-        collist[7] = new TableColDefEx("CN", typeof(String), "cn","Adprop");
-        collist[8] = new TableColDefEx("Company", typeof(String), "company","Adprop");
-        collist[9] = new TableColDefEx("Country", typeof(String), "co","Adprop");
-        collist[10] = new TableColDefEx("Created", typeof(DateTime), "whencreated","Adprop");
-        collist[11] = new TableColDefEx("Department", typeof(String), "department","Adprop");
-        collist[12] = new TableColDefEx("Description", typeof(String), "description","Adprop");
-        collist[13] = new TableColDefEx("DisplayName", typeof(String), "displayname","Adprop");
-        collist[14] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname","Adprop");
-        collist[15] = new TableColDefEx("Division", typeof(String), "division","Adprop");
-        collist[16] = new TableColDefEx("DoesNotRequirePreAuth", typeof(Boolean), "DONT_REQ_PREAUTH","UAC");
-        collist[17] = new TableColDefEx("EmailAddress", typeof(String), "mail","Adprop");
-        collist[18] = new TableColDefEx("EmployeeID", typeof(String), "employeeid","Adprop");
-        collist[19] = new TableColDefEx("EmployeeNumber", typeof(String), "employeenumber","Adprop");
-        collist[20] = new TableColDefEx("Enabled", typeof(Boolean), "ACCOUNTDISABLE","UAC");
-        collist[21] = new TableColDefEx("Fax", typeof(String), "facsimileTelephoneNumber","Adprop");
-        collist[22] = new TableColDefEx("GivenName", typeof(String), "givenname","Adprop");
-        collist[23] = new TableColDefEx("HomeDirectory", typeof(String), "homedirectory","Adprop");
-        collist[24] = new TableColDefEx("HomedirRequired", typeof(Boolean), "HOMEDIR_REQUIRED","UAC");
-        collist[25] = new TableColDefEx("HomeDrive", typeof(String), "homedrive","Adprop");
-        collist[26] = new TableColDefEx("HomePage", typeof(String), "wwwhomepage","Adprop");
-        collist[27] = new TableColDefEx("HomePhone", typeof(String), "homephone","Adprop");
-        collist[28] = new TableColDefEx("Initials", typeof(String), "initials","Adprop");
-        collist[29] = new TableColDefEx("LastBadPasswordAttempt", typeof(DateTime), "badpasswordtime","filetime");
-        collist[30] = new TableColDefEx("LastLogonDate", typeof(DateTime), "lastlogon","filetime");
-        collist[31] = new TableColDefEx("LockedOut", typeof(Boolean), "LOCKOUT","UAC");
-        collist[32] = new TableColDefEx("LogonCount", typeof(Int32), "logoncount","Adprop");
-        collist[33] = new TableColDefEx("LogonWorkstations", typeof(String), "userworkstations","Adprop");
-        collist[34] = new TableColDefEx("Manager", typeof(String), "manager","Adprop");
-        collist[35] = new TableColDefEx("MNSLogonAccount", typeof(Boolean), "MNS_LOGON_ACCOUNT","UAC");
-        collist[36] = new TableColDefEx("MobilePhone", typeof(String), "mobile","Adprop");
-        collist[37] = new TableColDefEx("Modified", typeof(DateTime), "whenchanged","Adprop");
-        collist[38] = new TableColDefEx("Name", typeof(String), "name","Adprop");
-        collist[39] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory","Adprop");
-        collist[40] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName","ObjClass");
-        collist[41] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid","ObjGuid");
-        collist[42] = new TableColDefEx("Office", typeof(String), "physicalDeliveryOfficeName","Adprop");
-        collist[43] = new TableColDefEx("OfficePhone", typeof(String), "telephonenumber","Adprop");
-        collist[44] = new TableColDefEx("Pager", typeof(String), "pager","Adprop");
-        collist[45] = new TableColDefEx("PasswordExpired", typeof(Boolean), "PASSWORD_EXPIRED","UAC");
-        collist[46] = new TableColDefEx("PasswordLastSet", typeof(DateTime), "pwdlastset","filetime");
-        collist[47] = new TableColDefEx("PasswordNeverExpires", typeof(Boolean), "DONT_EXPIRE_PASSWD","UAC");
-        collist[48] = new TableColDefEx("PasswordNotRequired", typeof(Boolean), "PASSWD_NOTREQD","UAC");
-        collist[49] = new TableColDefEx("POBox", typeof(String), "postofficebox","Adprop");
-        collist[50] = new TableColDefEx("PostalCode", typeof(String), "postalcode","Adprop");
-        collist[51] = new TableColDefEx("PrimaryGroupID", typeof(Int32), "primarygroupid","Adprop");
-        collist[52] = new TableColDefEx("ProfilePath", typeof(String), "profilepath","Adprop");
-        collist[53] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname","Adprop");
-        collist[54] = new TableColDefEx("ScriptPath", typeof(String), "scriptpath","Adprop");
-        collist[55] = new TableColDefEx("SID", typeof(String), "objectsid","SID");
-        collist[56] = new TableColDefEx("SmartcardLogonRequired", typeof(Boolean), "SMARTCARD_REQUIRED","UAC");
-        collist[57] = new TableColDefEx("State", typeof(String), "st","Adprop");
-        collist[58] = new TableColDefEx("StreetAddress", typeof(String), "streetaddress","Adprop");
-        collist[59] = new TableColDefEx("Surname", typeof(String), "sn","Adprop");
-        collist[60] = new TableColDefEx("Title", typeof(String), "title","Adprop");
-        collist[61] = new TableColDefEx("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION","UAC");
-        collist[62] = new TableColDefEx("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION","UAC");
-        collist[63] = new TableColDefEx("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY","UAC");
-        collist[64] = new TableColDefEx("UserPrincipalName", typeof(String), "userprincipalname","Adprop");
-        collist[65] = new TableColDefEx("userAccountControl", typeof(Int32), "useraccountcontrol","Adprop");
+        collist[0] = new TableColDefEx("GivenName", typeof(String), "givenname", "Adprop");
+        collist[1] = new TableColDefEx("Initials", typeof(String), "initials", "Adprop");
+        collist[2] = new TableColDefEx("Surname", typeof(String), "sn", "Adprop");
+        collist[3] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
+        collist[4] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
+        collist[5] = new TableColDefEx("Office", typeof(String), "physicalDeliveryOfficeName", "Adprop");
+        collist[6] = new TableColDefEx("OfficePhone", typeof(String), "telephonenumber", "Adprop");
+        collist[7] = new TableColDefEx("EmailAddress", typeof(String), "mail", "Adprop");
+        collist[8] = new TableColDefEx("HomePage", typeof(String), "wwwhomepage", "Adprop");
+        collist[9] = new TableColDefEx("StreetAddress", typeof(String), "streetaddress", "Adprop");
+        collist[10] = new TableColDefEx("POBox", typeof(String), "postofficebox", "Adprop");
+        collist[11] = new TableColDefEx("City", typeof(String), "l", "Adprop");
+        collist[12] = new TableColDefEx("State", typeof(String), "st", "Adprop");
+        collist[13] = new TableColDefEx("PostalCode", typeof(String), "postalcode", "Adprop");
+        collist[14] = new TableColDefEx("Country", typeof(String), "co", "Adprop");
+        collist[15] = new TableColDefEx("HomePhone", typeof(String), "homephone", "Adprop");
+        collist[16] = new TableColDefEx("Pager", typeof(String), "pager", "Adprop");
+        collist[17] = new TableColDefEx("MobilePhone", typeof(String), "mobile", "Adprop");
+        collist[18] = new TableColDefEx("Fax", typeof(String), "facsimileTelephoneNumber", "Adprop");
+        collist[19] = new TableColDefEx("Title", typeof(String), "title", "Adprop");
+        collist[20] = new TableColDefEx("Department", typeof(String), "department", "Adprop");
+        collist[21] = new TableColDefEx("Company", typeof(String), "company", "Adprop");
+        collist[22] = new TableColDefEx("Manager", typeof(String), "manager", "Adprop");
+        collist[23] = new TableColDefEx("EmployeeID", typeof(String), "employeeid", "Adprop");
+        collist[24] = new TableColDefEx("EmployeeNumber", typeof(String), "employeenumber", "Adprop");
+        collist[25] = new TableColDefEx("Division", typeof(String), "division", "Adprop");
+        collist[26] = new TableColDefEx("Enabled", typeof(Boolean), "ACCOUNTDISABLE", "UAC");
+        collist[27] = new TableColDefEx("LockedOut", typeof(Boolean), "LOCKOUT", "UAC");
+        collist[28] = new TableColDefEx("MNSLogonAccount", typeof(Boolean), "MNS_LOGON_ACCOUNT", "UAC");
+        collist[29] = new TableColDefEx("CannotChangePassword", typeof(Boolean), "PASSWD_CANT_CHANGE", "UAC");
+        collist[30] = new TableColDefEx("PasswordExpired", typeof(Boolean), "PASSWORD_EXPIRED", "UAC");
+        collist[31] = new TableColDefEx("PasswordNeverExpires", typeof(Boolean), "DONT_EXPIRE_PASSWD", "UAC");
+        collist[32] = new TableColDefEx("PasswordNotRequired", typeof(Boolean), "PASSWD_NOTREQD", "UAC");
+        collist[33] = new TableColDefEx("SmartcardLogonRequired", typeof(Boolean), "SMARTCARD_REQUIRED", "UAC");
+        collist[34] = new TableColDefEx("DoesNotRequirePreAuth", typeof(Boolean), "DONT_REQ_PREAUTH", "UAC");
+        collist[35] = new TableColDefEx("AllowReversiblePasswordEncryption", typeof(Boolean), "ENCRYPTED_TEXT_PWD_ALLOWED", "UAC");
+        collist[36] = new TableColDefEx("AccountNotDelegated", typeof(Boolean), "NOT_DELEGATED", "UAC");
+        collist[37] = new TableColDefEx("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION", "UAC");
+        collist[38] = new TableColDefEx("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION", "UAC");
+        collist[39] = new TableColDefEx("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY", "UAC");
+        collist[40] = new TableColDefEx("HomedirRequired", typeof(Boolean), "HOMEDIR_REQUIRED", "UAC");
+        collist[41] = new TableColDefEx("LastBadPasswordAttempt", typeof(DateTime), "badpasswordtime", "filetime");
+        collist[42] = new TableColDefEx("BadLogonCount", typeof(Int32), "badpwdcount", "Adprop");
+        collist[43] = new TableColDefEx("LastLogonDate", typeof(DateTime), "lastlogon", "filetime");
+        collist[44] = new TableColDefEx("LogonCount", typeof(Int32), "logoncount", "Adprop");
+        collist[45] = new TableColDefEx("PasswordLastSet", typeof(DateTime), "pwdlastset", "filetime");
+        collist[46] = new TableColDefEx("AccountLockoutTime", typeof(DateTime), "lockouttime", "filetime");
+        collist[47] = new TableColDefEx("AccountExpirationDate", typeof(DateTime), "accountexpires", "filetime");
+        collist[48] = new TableColDefEx("LogonWorkstations", typeof(String), "userworkstations", "Adprop");
+        collist[49] = new TableColDefEx("HomeDirectory", typeof(String), "homedirectory", "Adprop");
+        collist[50] = new TableColDefEx("HomeDrive", typeof(String), "homedrive", "Adprop");
+        collist[51] = new TableColDefEx("ProfilePath", typeof(String), "profilepath", "Adprop");
+        collist[52] = new TableColDefEx("ScriptPath", typeof(String), "scriptpath", "Adprop");
+        collist[53] = new TableColDefEx("userAccountControl", typeof(Int32), "useraccountcontrol", "Adprop");
+        collist[54] = new TableColDefEx("PrimaryGroupID", typeof(Int32), "primarygroupid", "Adprop");
+        collist[55] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
+        collist[56] = new TableColDefEx("CN", typeof(String), "cn", "Adprop");
+        collist[57] = new TableColDefEx("UserPrincipalName", typeof(String), "userprincipalname", "Adprop");
+        collist[58] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname", "Adprop");
+        collist[59] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[60] = new TableColDefEx("Created", typeof(DateTime), "whencreated", "Adprop");
+        collist[61] = new TableColDefEx("Modified", typeof(DateTime), "whenchanged", "Adprop");
+        collist[62] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
+        collist[63] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
+        collist[64] = new TableColDefEx("SID", typeof(String), "objectsid", "SID");
+        collist[65] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
     }
 
     private void MakeContactColList()
@@ -466,40 +471,40 @@ public class ADcolsTable
 
         // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
         // Copy/Paste all cells from "ColListDef" column.
-        collist[0] = new TableColDefEx("City", typeof(String), "l", "Adprop");
-        collist[1] = new TableColDefEx("CN", typeof(String), "cn", "Adprop");
-        collist[2] = new TableColDefEx("Company", typeof(String), "company", "Adprop");
-        collist[3] = new TableColDefEx("Country", typeof(String), "co", "Adprop");
-        collist[4] = new TableColDefEx("Created", typeof(DateTime), "whencreated", "Adprop");
-        collist[5] = new TableColDefEx("Department", typeof(String), "department", "Adprop");
-        collist[6] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
-        collist[7] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
-        collist[8] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
-        collist[9] = new TableColDefEx("Division", typeof(String), "division", "Adprop");
-        collist[10] = new TableColDefEx("EmailAddress", typeof(String), "mail", "Adprop");
-        collist[11] = new TableColDefEx("EmployeeID", typeof(String), "employeeid", "Adprop");
-        collist[12] = new TableColDefEx("EmployeeNumber", typeof(String), "employeenumber", "Adprop");
-        collist[13] = new TableColDefEx("Fax", typeof(String), "facsimileTelephoneNumber", "Adprop");
-        collist[14] = new TableColDefEx("GivenName", typeof(String), "givenname", "Adprop");
-        collist[15] = new TableColDefEx("HomePage", typeof(String), "wwwhomepage", "Adprop");
-        collist[16] = new TableColDefEx("HomePhone", typeof(String), "homephone", "Adprop");
-        collist[17] = new TableColDefEx("Initials", typeof(String), "initials", "Adprop");
-        collist[18] = new TableColDefEx("Manager", typeof(String), "manager", "Adprop");
-        collist[19] = new TableColDefEx("MobilePhone", typeof(String), "mobile", "Adprop");
-        collist[20] = new TableColDefEx("Modified", typeof(DateTime), "whenchanged", "Adprop");
-        collist[21] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
-        collist[22] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
-        collist[23] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
-        collist[24] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
-        collist[25] = new TableColDefEx("Office", typeof(String), "physicalDeliveryOfficeName", "Adprop");
-        collist[26] = new TableColDefEx("OfficePhone", typeof(String), "telephonenumber", "Adprop");
-        collist[27] = new TableColDefEx("Pager", typeof(String), "pager", "Adprop");
-        collist[28] = new TableColDefEx("POBox", typeof(String), "postofficebox", "Adprop");
-        collist[29] = new TableColDefEx("PostalCode", typeof(String), "postalcode", "Adprop");
-        collist[30] = new TableColDefEx("State", typeof(String), "st", "Adprop");
-        collist[31] = new TableColDefEx("StreetAddress", typeof(String), "streetaddress", "Adprop");
-        collist[32] = new TableColDefEx("Surname", typeof(String), "sn", "Adprop");
-        collist[33] = new TableColDefEx("Title", typeof(String), "title", "Adprop");
+        collist[0] = new TableColDefEx("GivenName", typeof(String), "givenname", "Adprop");
+        collist[1] = new TableColDefEx("Initials", typeof(String), "initials", "Adprop");
+        collist[2] = new TableColDefEx("Surname", typeof(String), "sn", "Adprop");
+        collist[3] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
+        collist[4] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
+        collist[5] = new TableColDefEx("Office", typeof(String), "physicalDeliveryOfficeName", "Adprop");
+        collist[6] = new TableColDefEx("OfficePhone", typeof(String), "telephonenumber", "Adprop");
+        collist[7] = new TableColDefEx("EmailAddress", typeof(String), "mail", "Adprop");
+        collist[8] = new TableColDefEx("HomePage", typeof(String), "wwwhomepage", "Adprop");
+        collist[9] = new TableColDefEx("StreetAddress", typeof(String), "streetaddress", "Adprop");
+        collist[10] = new TableColDefEx("POBox", typeof(String), "postofficebox", "Adprop");
+        collist[11] = new TableColDefEx("City", typeof(String), "l", "Adprop");
+        collist[12] = new TableColDefEx("State", typeof(String), "st", "Adprop");
+        collist[13] = new TableColDefEx("PostalCode", typeof(String), "postalcode", "Adprop");
+        collist[14] = new TableColDefEx("Country", typeof(String), "co", "Adprop");
+        collist[15] = new TableColDefEx("HomePhone", typeof(String), "homephone", "Adprop");
+        collist[16] = new TableColDefEx("Pager", typeof(String), "pager", "Adprop");
+        collist[17] = new TableColDefEx("MobilePhone", typeof(String), "mobile", "Adprop");
+        collist[18] = new TableColDefEx("Fax", typeof(String), "facsimileTelephoneNumber", "Adprop");
+        collist[19] = new TableColDefEx("Title", typeof(String), "title", "Adprop");
+        collist[20] = new TableColDefEx("Department", typeof(String), "department", "Adprop");
+        collist[21] = new TableColDefEx("Company", typeof(String), "company", "Adprop");
+        collist[22] = new TableColDefEx("Manager", typeof(String), "manager", "Adprop");
+        collist[23] = new TableColDefEx("EmployeeID", typeof(String), "employeeid", "Adprop");
+        collist[24] = new TableColDefEx("EmployeeNumber", typeof(String), "employeenumber", "Adprop");
+        collist[25] = new TableColDefEx("Division", typeof(String), "division", "Adprop");
+        collist[26] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[27] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
+        collist[28] = new TableColDefEx("CN", typeof(String), "cn", "Adprop");
+        collist[29] = new TableColDefEx("Created", typeof(DateTime), "whencreated", "Adprop");
+        collist[30] = new TableColDefEx("Modified", typeof(DateTime), "whenchanged", "Adprop");
+        collist[31] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
+        collist[32] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
+        collist[33] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
     }
 
     private void MakeComputerColList()
@@ -509,47 +514,47 @@ public class ADcolsTable
 
         // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
         // Copy/Paste all cells from "ColListDef" column.
-        collist[0] = new TableColDefEx("AccountExpirationDate", typeof(DateTime), "accountexpires", "filetime");
-        collist[1] = new TableColDefEx("AccountLockoutTime", typeof(DateTime), "lockouttime", "filetime");
-        collist[2] = new TableColDefEx("AccountNotDelegated", typeof(Boolean), "NOT_DELEGATED", "UAC");
-        collist[3] = new TableColDefEx("AllowReversiblePasswordEncryption", typeof(Boolean), "ENCRYPTED_TEXT_PWD_ALLOWED", "UAC");
-        collist[4] = new TableColDefEx("BadLogonCount", typeof(Int32), "badpwdcount", "Adprop");
-        collist[5] = new TableColDefEx("CannotChangePassword", typeof(Boolean), "PASSWD_CANT_CHANGE", "UAC");
-        collist[6] = new TableColDefEx("CN", typeof(String), "cn", "Adprop");
-        collist[7] = new TableColDefEx("Created", typeof(DateTime), "whenCreated", "Adprop");
-        collist[8] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
-        collist[9] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
-        collist[10] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
-        collist[11] = new TableColDefEx("DNSHostName", typeof(String), "dnshostname", "Adprop");
-        collist[12] = new TableColDefEx("DoesNotRequirePreAuth", typeof(Boolean), "DONT_REQ_PREAUTH", "UAC");
-        collist[13] = new TableColDefEx("Enabled", typeof(Boolean), "ACCOUNTDISABLE", "UAC");
-        collist[14] = new TableColDefEx("LastBadPasswordAttempt", typeof(DateTime), "badpasswordtime", "filetime");
-        collist[15] = new TableColDefEx("LastLogonDate", typeof(DateTime), "lastlogontimestamp/lastlogon", "filetime");
-        collist[16] = new TableColDefEx("Location", typeof(String), "location", "Adprop");
-        collist[17] = new TableColDefEx("LockedOut", typeof(Boolean), "LOCKOUT", "UAC");
-        collist[18] = new TableColDefEx("logonCount", typeof(Int32), "logoncount", "Adprop");
-        collist[19] = new TableColDefEx("ManagedBy", typeof(String), "managedby", "Adprop");
-        collist[20] = new TableColDefEx("Modified", typeof(DateTime), "whenChanged", "Adprop");
-        collist[21] = new TableColDefEx("MNSLogonAccount", typeof(Boolean), "MNS_LOGON_ACCOUNT", "UAC");
-        collist[22] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
-        collist[23] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
-        collist[24] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
-        collist[25] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
-        collist[26] = new TableColDefEx("OperatingSystem", typeof(String), "operatingsystem", "Adprop");
-        collist[27] = new TableColDefEx("OperatingSystemServicePack", typeof(String), "operatingsystemservicepack", "Adprop");
-        collist[28] = new TableColDefEx("OperatingSystemVersion", typeof(String), "operatingsystemversion", "Adprop");
-        collist[29] = new TableColDefEx("PasswordExpired", typeof(Boolean), "PASSWORD_EXPIRED", "UAC");
-        collist[30] = new TableColDefEx("PasswordLastSet", typeof(DateTime), "pwdlastset", "filetime");
-        collist[31] = new TableColDefEx("PasswordNeverExpires", typeof(Boolean), "DONT_EXPIRE_PASSWD", "UAC");
-        collist[32] = new TableColDefEx("PasswordNotRequired", typeof(Boolean), "PASSWD_NOTREQD", "UAC");
-        collist[33] = new TableColDefEx("PrimaryGroupID", typeof(Int32), "primarygroupid", "Adprop");
-        collist[34] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname", "Adprop");
-        collist[35] = new TableColDefEx("SID", typeof(String), "objectsid", "SID");
-        collist[36] = new TableColDefEx("SmartcardLogonRequired", typeof(Boolean), "SMARTCARD_REQUIRED", "UAC");
-        collist[37] = new TableColDefEx("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION", "UAC");
-        collist[38] = new TableColDefEx("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION", "UAC");
-        collist[39] = new TableColDefEx("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY", "UAC");
-        collist[40] = new TableColDefEx("userAccountControl", typeof(Int32), "useraccountcontrol", "Adprop");
+        collist[0] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
+        collist[1] = new TableColDefEx("DNSHostName", typeof(String), "dnshostname", "Adprop");
+        collist[2] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
+        collist[3] = new TableColDefEx("Location", typeof(String), "location", "Adprop");
+        collist[4] = new TableColDefEx("OperatingSystem", typeof(String), "operatingsystem", "Adprop");
+        collist[5] = new TableColDefEx("OperatingSystemVersion", typeof(String), "operatingsystemversion", "Adprop");
+        collist[6] = new TableColDefEx("OperatingSystemServicePack", typeof(String), "operatingsystemservicepack", "Adprop");
+        collist[7] = new TableColDefEx("ManagedBy", typeof(String), "managedby", "Adprop");
+        collist[8] = new TableColDefEx("Enabled", typeof(Boolean), "ACCOUNTDISABLE", "UAC");
+        collist[9] = new TableColDefEx("LockedOut", typeof(Boolean), "LOCKOUT", "UAC");
+        collist[10] = new TableColDefEx("MNSLogonAccount", typeof(Boolean), "MNS_LOGON_ACCOUNT", "UAC");
+        collist[11] = new TableColDefEx("CannotChangePassword", typeof(Boolean), "PASSWD_CANT_CHANGE", "UAC");
+        collist[12] = new TableColDefEx("PasswordExpired", typeof(Boolean), "PASSWORD_EXPIRED", "UAC");
+        collist[13] = new TableColDefEx("PasswordNeverExpires", typeof(Boolean), "DONT_EXPIRE_PASSWD", "UAC");
+        collist[14] = new TableColDefEx("PasswordNotRequired", typeof(Boolean), "PASSWD_NOTREQD", "UAC");
+        collist[15] = new TableColDefEx("SmartcardLogonRequired", typeof(Boolean), "SMARTCARD_REQUIRED", "UAC");
+        collist[16] = new TableColDefEx("DoesNotRequirePreAuth", typeof(Boolean), "DONT_REQ_PREAUTH", "UAC");
+        collist[17] = new TableColDefEx("AllowReversiblePasswordEncryption", typeof(Boolean), "ENCRYPTED_TEXT_PWD_ALLOWED", "UAC");
+        collist[18] = new TableColDefEx("AccountNotDelegated", typeof(Boolean), "NOT_DELEGATED", "UAC");
+        collist[19] = new TableColDefEx("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION", "UAC");
+        collist[20] = new TableColDefEx("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION", "UAC");
+        collist[21] = new TableColDefEx("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY", "UAC");
+        collist[22] = new TableColDefEx("LastBadPasswordAttempt", typeof(DateTime), "badpasswordtime", "filetime");
+        collist[23] = new TableColDefEx("BadLogonCount", typeof(Int32), "badpwdcount", "Adprop");
+        collist[24] = new TableColDefEx("LastLogonDate", typeof(DateTime), "lastlogon", "filetime");
+        collist[25] = new TableColDefEx("logonCount", typeof(Int32), "logoncount", "Adprop");
+        collist[26] = new TableColDefEx("PasswordLastSet", typeof(DateTime), "pwdlastset", "filetime");
+        collist[27] = new TableColDefEx("AccountLockoutTime", typeof(DateTime), "lockouttime", "filetime");
+        collist[28] = new TableColDefEx("AccountExpirationDate", typeof(DateTime), "accountexpires", "filetime");
+        collist[29] = new TableColDefEx("Created", typeof(DateTime), "whenCreated", "Adprop");
+        collist[30] = new TableColDefEx("Modified", typeof(DateTime), "whenChanged", "Adprop");
+        collist[31] = new TableColDefEx("CN", typeof(String), "cn", "Adprop");
+        collist[32] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
+        collist[33] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[34] = new TableColDefEx("PrimaryGroupID", typeof(Int32), "primarygroupid", "Adprop");
+        collist[35] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname", "Adprop");
+        collist[36] = new TableColDefEx("userAccountControl", typeof(Int32), "useraccountcontrol", "Adprop");
+        collist[37] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
+        collist[38] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
+        collist[39] = new TableColDefEx("SID", typeof(String), "objectsid", "SID");
+        collist[40] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
     }
 
     private void MakeGroupColList()
@@ -559,21 +564,21 @@ public class ADcolsTable
 
         // COPY CODE from "AD_DW_Users table map to .net V4.xlsx".
         // Copy/Paste all cells from "ColListDef" column.
-        collist[0] = new TableColDefEx("Created", typeof(DateTime), "whenCreated", "Adprop");
-        collist[1] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
-        collist[2] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
-        collist[3] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[0] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
+        collist[1] = new TableColDefEx("GroupCategory", typeof(String), "grouptype", "GrpCat");
+        collist[2] = new TableColDefEx("GroupScope", typeof(String), "grouptype", "GrpScope");
+        collist[3] = new TableColDefEx("Description", typeof(String), "description", "Adprop");
         collist[4] = new TableColDefEx("EmailAddress", typeof(String), "mail", "Adprop");
-        collist[5] = new TableColDefEx("GroupCategory", typeof(String), "grouptype", "GrpCat");
-        collist[6] = new TableColDefEx("GroupScope", typeof(String), "grouptype", "GrpScope");
-        collist[7] = new TableColDefEx("ManagedBy", typeof(String), "managedby", "Adprop");
-        collist[8] = new TableColDefEx("Modified", typeof(DateTime), "whenChanged", "Adprop");
-        collist[9] = new TableColDefEx("Name", typeof(String), "name", "Adprop");
-        collist[10] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
-        collist[11] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
-        collist[12] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
-        collist[13] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname", "Adprop");
-        collist[14] = new TableColDefEx("SID", typeof(String), "objectsid", "SID");
+        collist[5] = new TableColDefEx("ManagedBy", typeof(String), "managedby", "Adprop");
+        collist[6] = new TableColDefEx("DistinguishedName", typeof(String), "distinguishedname", "Adprop");
+        collist[7] = new TableColDefEx("DisplayName", typeof(String), "displayname", "Adprop");
+        collist[8] = new TableColDefEx("Created", typeof(DateTime), "whenCreated", "Adprop");
+        collist[9] = new TableColDefEx("Modified", typeof(DateTime), "whenChanged", "Adprop");
+        collist[10] = new TableColDefEx("SamAccountName", typeof(String), "samaccountname", "Adprop");
+        collist[11] = new TableColDefEx("ObjectCategory", typeof(String), "objectcategory", "Adprop");
+        collist[12] = new TableColDefEx("ObjectClass", typeof(String), "SchemaClassName", "ObjClass");
+        collist[13] = new TableColDefEx("SID", typeof(String), "objectsid", "SID");
+        collist[14] = new TableColDefEx("ObjectGUID", typeof(Guid), "Guid", "ObjGuid");
     }
 
     public DataTable CreateTable()
