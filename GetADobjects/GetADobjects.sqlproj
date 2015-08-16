@@ -73,7 +73,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="TestScript1.sql" />
-    <None Include="AD_DW_Users table map to .net V4.xlsx" />
     <None Include="TestScript2.sql" />
+    <None Include="TestScript3.sql" />
+    <None Include="TestScript4.sql" />
+    <None Include="AD Column map.xlsx" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Get all AD objects into AD_DW DB.sql" />
   </ItemGroup>
 </Project>
