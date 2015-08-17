@@ -199,6 +199,8 @@ CREATE TABLE [dbo].[ADgroup_members](
 [GroupGUID] [uniqueidentifier] NOT NULL,
 [MemberGUID] [uniqueidentifier] NOT NULL,
 [MemberType] [nvarchar](64) NOT NULL,
+[GroupDistinguishedName] [nvarchar](512) NULL,
+[MemberDistinguishedName] [nvarchar](512) NULL,
 CONSTRAINT [PK_GroupMemberGUIDs] PRIMARY KEY CLUSTERED 
 (
 	[GroupGUID] ASC, [MemberGUID] ASC
@@ -206,9 +208,9 @@ CONSTRAINT [PK_GroupMemberGUIDs] PRIMARY KEY CLUSTERED
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[ADgroup_members] WITH CHECK ADD FOREIGN KEY([GroupGUID])
-REFERENCES [dbo].[ADgroups] ([ObjectGUID])
-GO
+--ALTER TABLE [dbo].[ADgroup_members] WITH CHECK ADD FOREIGN KEY([GroupGUID])
+--REFERENCES [dbo].[ADgroups] ([ObjectGUID])
+--GO
 
 CREATE TABLE [dbo].[ADgroup_user_members](
 	[GroupGUID] [uniqueidentifier] NOT NULL,
@@ -222,13 +224,13 @@ CREATE TABLE [dbo].[ADgroup_user_members](
 
 GO
 
-ALTER TABLE [dbo].[ADgroup_user_members]  WITH CHECK ADD FOREIGN KEY([GroupGUID])
-REFERENCES [dbo].[ADgroups] ([ObjectGUID])
-GO
+--ALTER TABLE [dbo].[ADgroup_user_members]  WITH CHECK ADD FOREIGN KEY([GroupGUID])
+--REFERENCES [dbo].[ADgroups] ([ObjectGUID])
+--GO
 
-ALTER TABLE [dbo].[ADgroup_user_members]  WITH CHECK ADD FOREIGN KEY([UserGUID])
-REFERENCES [dbo].[ADusers] ([ObjectGUID])
-GO
+--ALTER TABLE [dbo].[ADgroup_user_members]  WITH CHECK ADD FOREIGN KEY([UserGUID])
+--REFERENCES [dbo].[ADusers] ([ObjectGUID])
+--GO
 
 CREATE TABLE [dbo].[ADwell_known_sids](
 [Name] [nvarchar](256) NULL,
@@ -264,14 +266,14 @@ VALUES
 (N'S-1-1', N'World Authority', N'An identifier authority.'), 
 (N'S-1-1-0', N'Everyone', N'A group that includes all users, even anonymous users and guests. Membership is controlled by the operating system.'), 
 (N'S-1-2', N'Local Authority', N'An identifier authority.'), 
-(N'S-1-2-0', N'Local ', N'A group that includes all users who have logged on locally. '), 
-(N'S-1-2-1', N'Console Logon ', N'A group that includes users who are logged on to the physical console. '), 
+(N'S-1-2-0', N'Local', N'A group that includes all users who have logged on locally. '), 
+(N'S-1-2-1', N'Console Logon', N'A group that includes users who are logged on to the physical console. '), 
 (N'S-1-3', N'Creator Authority', N'An identifier authority.'), 
 (N'S-1-3-0', N'Creator Owner', N'A placeholder in an inheritable access control entry (ACE). When the ACE is inherited, the system replaces this SID with the SID for the object''s creator.'), 
 (N'S-1-3-1', N'Creator Group', N'A placeholder in an inheritable ACE. When the ACE is inherited, the system replaces this SID with the SID for the primary group of the object''s creator. The primary group is used only by the POSIX subsystem.'), 
 (N'S-1-3-2', N'Creator Owner Server', N'This SID is not used in Windows 2000.'), 
 (N'S-1-3-3', N'Creator Group Server', N'This SID is not used in Windows 2000.'), 
-(N'S-1-3-4', N'Owner Rights ', N'A group that represents the current owner of the object. When an ACE that carries this SID is applied to an object, the system ignores the implicit READ_CONTROL and WRITE_DAC permissions for the object owner.'), 
+(N'S-1-3-4', N'Owner Rights', N'A group that represents the current owner of the object. When an ACE that carries this SID is applied to an object, the system ignores the implicit READ_CONTROL and WRITE_DAC permissions for the object owner.'), 
 --(N'S-1-5-80-0', N'All Services ', N'A group that includes all service processes configured on the system. Membership is controlled by the operating system. '), 
 (N'S-1-4', N'Non-unique Authority', N'An identifier authority.'), 
 (N'S-1-5', N'NT Authority', N'An identifier authority.'), 
@@ -288,9 +290,9 @@ VALUES
 (N'S-1-5-11', N'Authenticated Users', N'A group that includes all users whose identities were authenticated when they logged on. Membership is controlled by the operating system.'), 
 (N'S-1-5-12', N'Restricted Code', N'This SID is reserved for future use.'), 
 (N'S-1-5-13', N'Terminal Server Users', N'A group that includes all users that have logged on to a Terminal Services server. Membership is controlled by the operating system.'), 
-(N'S-1-5-14', N'Remote Interactive Logon ', N'A group that includes all users who have logged on through a terminal services logon. '), 
-(N'S-1-5-15', N'This Organization ', N'A group that includes all users from the same organization. Only included with AD accounts and only added by a Windows Server 2003 or later domain controller. '), 
-(N'S-1-5-17', N'This Organization ', N'An account that is used by the default Internet Information Services (IIS) user. '), 
+(N'S-1-5-14', N'Remote Interactive Logon', N'A group that includes all users who have logged on through a terminal services logon. '), 
+(N'S-1-5-15', N'This Organization', N'A group that includes all users from the same organization. Only included with AD accounts and only added by a Windows Server 2003 or later domain controller. '), 
+(N'S-1-5-17', N'This Organization', N'An account that is used by the default Internet Information Services (IIS) user. '), 
 (N'S-1-5-18', N'Local System', N'A service account that is used by the operating system.'), 
 (N'S-1-5-19', N'NT Authority', N'Local Service'), 
 (N'S-1-5-20', N'NT Authority', N'Network Service'), 

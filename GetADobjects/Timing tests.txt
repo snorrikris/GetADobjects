@@ -1,0 +1,13 @@
+Timing tests
+
+SP name				Time	Rows
+clr_GetADusers		2:17	576
+clr_GetADcontacts	0:05	9
+clr_GetADcomputers	0:59	274
+clr_GetADgroups		2:12	1093
+
+clr_GetADobjects
+- users				0:18	576
+- contacts			0:00	16
+- computers			0:07	275
+- groups			0:17	1093 (and 3359 in XML)

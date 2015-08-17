@@ -77,8 +77,18 @@
     <None Include="TestScript3.sql" />
     <None Include="TestScript4.sql" />
     <None Include="AD Column map.xlsx" />
+    <None Include="AD links.txt" />
+    <None Include="Timing tests.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Get all AD objects into AD_DW DB.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Get Cols as CSV string.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="CreateTables.sql" />
+    <None Include="GetMembersInGroupAndSubgroups.sql" />
+    <None Include="GetUsersInGroupAndSubgroups.sql" />
   </ItemGroup>
 </Project>

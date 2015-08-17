@@ -152,11 +152,19 @@ SET @SQL = 'DROP TABLE ' + @tempTableName + ';';
 EXECUTE (@SQL)
 
 -- Create temp table for group members
-IF OBJECT_ID('tempdb..#ADgroup_members') IS NOT NULL DROP TABLE #ADgroup_members;
-CREATE TABLE #ADgroup_members(
-[GroupGUID] [uniqueidentifier] NOT NULL,
-[MemberGUID] [uniqueidentifier] NOT NULL,
-[MemberType] [nvarchar](64) NOT NULL);
+--IF OBJECT_ID('tempdb..#ADgroup_members') IS NOT NULL DROP TABLE #ADgroup_members;
+--CREATE TABLE #ADgroup_members(
+--[GroupGUID] [uniqueidentifier] NOT NULL,
+--[MemberGUID] [uniqueidentifier] NOT NULL,
+--[MemberType] [nvarchar](64) NOT NULL,
+--[GroupDistinguishedName] [nvarchar](512) NULL,
+--[MemberDistinguishedName] [nvarchar](512) NULL);
+-- Create (global) temp table dynamically. Note is global cuz of scope issue.
+SET @table_name = 'dbo.ADgroup_members';
+SET @tempTableName = '##ADgroup_members';
+SET @SQL = '';
+EXECUTE [dbo].[usp_GenerateTempTableScript] @table_name, @tempTableName, @SQL OUTPUT;
+EXEC (@SQL);
 
 -- INSERT group members into temp table.
 WITH MemberList AS ( -- Process group members XML data.
@@ -166,11 +174,13 @@ from @Members.nodes('/body') as Tb(Cb)
   outer apply Tb.Cb.nodes('Group') as Tg(Cg)
   outer apply Tg.Cg.nodes('Member') AS Tm(Cm)
 )
-INSERT INTO #ADgroup_members 
+INSERT INTO ##ADgroup_members 
   SELECT 
 	G.objectGUID AS GroupGUID,
 	COALESCE(U.objectGUID, GM.objectGUID, C.objectGUID, CN.objectGUID, W.ObjectGUID) AS MemberGUID,
-	COALESCE(U.ObjectClass, GM.ObjectClass, C.ObjectClass, CN.ObjectClass, W.ObjectClass) AS MemberType
+	COALESCE(U.ObjectClass, GM.ObjectClass, C.ObjectClass, CN.ObjectClass, W.ObjectClass) AS MemberType,
+	M.GroupDS AS GroupDistinguishedName,
+	M.MemberDS AS [MemberDistinguishedName]
 FROM MemberList M
 LEFT JOIN dbo.ADgroups G ON M.GroupDS = G.DistinguishedName
 LEFT JOIN dbo.ADgroups GM ON M.MemberDS = GM.DistinguishedName
@@ -180,19 +190,18 @@ LEFT JOIN dbo.ADcontacts CN ON M.MemberDS = CN.DistinguishedName
 LEFT JOIN dbo.ADwell_known_sids W ON M.MemberDS = W.DistinguishedName;
 
 MERGE dbo.ADgroup_members WITH (HOLDLOCK) AS T
-USING #ADgroup_members AS S 
+USING ##ADgroup_members AS S 
 ON (T.GroupGUID = S.GroupGUID AND T.MemberGUID = S.MemberGUID) 
 WHEN MATCHED THEN 
 UPDATE SET 
-T.MemberType = S.MemberType
+T.MemberType = S.MemberType,
+T.[GroupDistinguishedName] = S.[GroupDistinguishedName],
+T.[MemberDistinguishedName] = S.[MemberDistinguishedName]
 WHEN NOT MATCHED BY TARGET THEN 
-INSERT (
-GroupGUID, MemberGUID, MemberType
-) 
-VALUES (
-S.GroupGUID, S.MemberGUID, S.MemberType
-) 
+INSERT (GroupGUID, MemberGUID, MemberType, [GroupDistinguishedName], [MemberDistinguishedName]) 
+VALUES (S.GroupGUID, S.MemberGUID, S.MemberType, S.[GroupDistinguishedName], S.[MemberDistinguishedName]) 
 WHEN NOT MATCHED BY SOURCE THEN 
 DELETE;
 
-DROP TABLE #ADgroup_members;
+DROP TABLE ##ADgroup_members;
+
