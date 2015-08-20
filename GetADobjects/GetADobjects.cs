@@ -9,6 +9,7 @@ using System.DirectoryServices.AccountManagement;
 using System.Security.Principal;
 using System.Xml;
 using System.Collections.Generic;
+using System.Drawing.Imaging;
 
 /*
  * Must run this on the database
@@ -16,6 +17,11 @@ CREATE ASSEMBLY
     [System.DirectoryServices.AccountManagement] from 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.DirectoryServices.AccountManagement.dll'
     with permission_set = UNSAFE --Fails if not 64 on 64 bit machines 
 GO
+
+ CREATE ASSEMBLY  
+    [System.Drawing] 
+	from 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Drawing.dll'
+    with permission_set = UNSAFE --Fails if not 64 on 64 bit machines 
 */
 
 public partial class StoredProcedures
@@ -154,6 +160,146 @@ public partial class StoredProcedures
         }
         file.Close();
     }   // endof: clr_GetADobjects
+
+    [Microsoft.SqlServer.Server.SqlProcedure]
+    public static void clr_GetADusersPhotos(SqlString ADpath, SqlString ADfilter)
+    {
+        System.IO.StreamWriter file = CreateLogFile();
+
+        SearchResultCollection results = null;
+        try
+        {
+            DataTable tbl = new DataTable();
+            tbl.Columns.Add("UserGUID", typeof(Guid));
+            tbl.Columns.Add("Width", typeof(int));
+            tbl.Columns.Add("Height", typeof(int));
+            tbl.Columns.Add("Photo", typeof(byte[]));
+            DataRow row;
+
+            DirectoryEntry entry = new DirectoryEntry((string)ADpath);
+            DirectorySearcher searcher = new DirectorySearcher(entry);
+            searcher.Filter = (string)ADfilter;
+            searcher.PageSize = 500;
+
+            //string folder = "C:\\ProgramData\\GetADobjects";
+
+            results = searcher.FindAll();
+            foreach (SearchResult searchResult in results)
+            {
+                DirectoryEntry item = searchResult.GetDirectoryEntry();
+
+                PropertyValueCollection prop = GetADproperty(item, "thumbnailphoto");
+                if (prop == null)
+                    continue;
+                System.Drawing.Size imgsize = GetImageSize((byte[])prop[0]);
+                row = tbl.NewRow();
+                row[0] = item.Guid;
+                row[1] = imgsize.Width;
+                row[2] = imgsize.Height;
+                row[3] = prop[0];
+                tbl.Rows.Add(row);
+
+                //string usr = (string)item.Properties["samaccountname"][0];
+                //string filepath = Path.Combine(folder, usr + ".jpg");
+                //File.WriteAllBytes(filepath, (byte[])prop[0]);
+
+               // GetImageMetadata((byte[])prop[0], file);
+            }
+            DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
+            file.WriteLine("COMException: " + exception);
+        }
+        catch (InvalidOperationException)
+        {
+            InvalidOperationException InvOpEx = new InvalidOperationException();
+            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
+        }
+        catch (NotSupportedException)
+        {
+            NotSupportedException NotSuppEx = new NotSupportedException();
+            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+        finally
+        {
+            if (null != results)
+            {
+                results.Dispose();  // To prevent memory leaks, always call 
+                results = null;     // SearchResultCollection.Dispose() manually.
+            }
+        }
+        file.Close();
+    }   // endof: clr_GetADusersPhotos
+
+    private static System.Drawing.Size GetImageSize(byte[] imagedata)
+    {
+        MemoryStream memstream = null;
+        System.Drawing.Image image = null;
+        System.Drawing.Size imgsize = new System.Drawing.Size(0, 0);
+        try
+        {
+            // Create an Image object. 
+            memstream = new MemoryStream(imagedata);
+            image = System.Drawing.Image.FromStream(memstream);
+            imgsize = image.Size;
+        }
+        catch (Exception ex)
+        {
+            //file.WriteLine("Exception: " + ex.Message);
+        }
+        finally
+        {
+            if (memstream != null)
+                memstream.Close();
+        }
+        return imgsize;
+    }
+
+    private static void GetImageMetadata(byte[] imagedata, System.IO.StreamWriter file)
+    {
+        MemoryStream memstream = null;
+        System.Drawing.Image image = null;
+        try
+        {
+            // Create an Image object. 
+            memstream = new MemoryStream(imagedata);
+            image = System.Drawing.Image.FromStream(memstream);
+
+            // Get the PropertyItems property from image.
+            PropertyItem[] propItems = image.PropertyItems;
+
+            // For each PropertyItem in the array, display the ID, type, and  
+            // length. 
+            int count = 0;
+            string ln = "";
+            foreach (PropertyItem propItem in propItems)
+            {
+                ln = "Property Item " + count.ToString();
+                ln += ",   iD: 0x" + propItem.Id.ToString("x");
+                ln += ",   type: " + propItem.Type.ToString();
+                ln += ",   length: " + propItem.Len.ToString() + " bytes";
+                file.WriteLine(ln);
+                count++;
+            }
+
+            file.WriteLine("-------------------------------------------------------");
+        }
+        catch (Exception ex)
+        {
+            file.WriteLine("Exception: " + ex.Message);
+        }
+        finally
+        {
+            if (memstream != null)
+                memstream.Close();
+        }
+    }
 
     [Microsoft.SqlServer.Server.SqlProcedure]
     public static void clr_GetADpropertiesToFile(SqlString ADpath, SqlString ADfilter)

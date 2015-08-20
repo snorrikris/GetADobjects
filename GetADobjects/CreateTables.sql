@@ -212,17 +212,17 @@ GO
 --REFERENCES [dbo].[ADgroups] ([ObjectGUID])
 --GO
 
-CREATE TABLE [dbo].[ADgroup_user_members](
-	[GroupGUID] [uniqueidentifier] NOT NULL,
-	[UserGUID] [uniqueidentifier] NOT NULL,
- CONSTRAINT [PK_GroupUserMemberGUIDs] PRIMARY KEY CLUSTERED 
-(
-	[GroupGUID] ASC,
-	[UserGUID] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
+--CREATE TABLE [dbo].[ADgroup_user_members](
+--	[GroupGUID] [uniqueidentifier] NOT NULL,
+--	[UserGUID] [uniqueidentifier] NOT NULL,
+-- CONSTRAINT [PK_GroupUserMemberGUIDs] PRIMARY KEY CLUSTERED 
+--(
+--	[GroupGUID] ASC,
+--	[UserGUID] ASC
+--)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+--) ON [PRIMARY]
 
-GO
+--GO
 
 --ALTER TABLE [dbo].[ADgroup_user_members]  WITH CHECK ADD FOREIGN KEY([GroupGUID])
 --REFERENCES [dbo].[ADgroups] ([ObjectGUID])
@@ -355,5 +355,17 @@ VALUES
 (N'S-1-5-32-578', N'BUILTIN\Hyper-V Administrators', N'A Builtin Local group. Members of this group have complete and unrestricted access to all features of Hyper-V.'), 
 (N'S-1-5-32-579', N'BUILTIN\Access Control Assistance Operators', N'A Builtin Local group. Members of this group can remotely query authorization attributes and permissions for resources on this computer.'), 
 (N'S-1-5-32-580', N'BUILTIN\Remote Management Users', N'A Builtin Local group. Members of this group can access WMI resources over management protocols (such as WS-Management via the Windows Remote Management service). This applies only to WMI namespaces that grant access to the user.');
+GO
+
+CREATE TABLE [dbo].[ADusersPhotos](
+[UserGUID] [uniqueidentifier] NOT NULL,
+[Width] [int] NULL,
+[Height] [int] NULL,
+[Photo] [varbinary](max) NULL,
+CONSTRAINT [PK_ADusersPhotosGUIDs] PRIMARY KEY CLUSTERED 
+(
+	[UserGUID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
 GO
 

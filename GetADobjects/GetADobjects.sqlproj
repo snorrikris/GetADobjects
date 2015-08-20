@@ -66,6 +66,7 @@
     <Reference Include="System.DirectoryServices" />
     <Reference Include="System.DirectoryServices.AccountManagement" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -79,6 +80,7 @@
     <None Include="AD Column map.xlsx" />
     <None Include="AD links.txt" />
     <None Include="Timing tests.txt" />
+    <None Include="TestPhotoScript.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Get all AD objects into AD_DW DB.sql" />

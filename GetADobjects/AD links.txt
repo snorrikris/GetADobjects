@@ -42,3 +42,13 @@ http://www.morgantechspace.com/2013/10/well-known-sids-and-built-in-groups.html
 LDAP filter syntax
 http://social.technet.microsoft.com/wiki/contents/articles/5392.active-directory-ldap-syntax-filters.aspx
 https://msdn.microsoft.com/en-us/library/aa746475(v=vs.85).aspx
+
+AD thumbnail attributes/user-userAccountControl
+http://blog.cjwdev.co.uk/2010/11/03/the-thumbnailphoto-attribute-explained/
+http://www.squiggle.org/2011/08/displaying-thumbnailphoto-from-active-directory-on-a-web-page/
+
+JPEG image size
+http://www.media.mit.edu/pia/Research/deepview/exif.html
+http://www.codeproject.com/Articles/35978/Reading-Image-Headers-to-Get-Width-and-Height
+http://stackoverflow.com/questions/11168558/get-image-width-and-height-without-creating-bitmap-object
+http://stackoverflow.com/questions/111345/getting-image-dimensions-without-reading-the-entire-file
