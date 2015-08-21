@@ -358,13 +358,13 @@ VALUES
 GO
 
 CREATE TABLE [dbo].[ADusersPhotos](
-[UserGUID] [uniqueidentifier] NOT NULL,
+[ObjectGUID] [uniqueidentifier] NOT NULL,
 [Width] [int] NULL,
 [Height] [int] NULL,
 [Photo] [varbinary](max) NULL,
 CONSTRAINT [PK_ADusersPhotosGUIDs] PRIMARY KEY CLUSTERED 
 (
-	[UserGUID] ASC
+	[ObjectGUID] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO

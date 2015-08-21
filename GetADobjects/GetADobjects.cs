@@ -1,16 +1,12 @@
-using System;
-using System.Data;
-using System.Data.SqlClient;
-using System.Data.SqlTypes;
 using Microsoft.SqlServer.Server;
-using System.IO;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlTypes;
 using System.DirectoryServices;
-using System.DirectoryServices.AccountManagement;
+using System.IO;
 using System.Security.Principal;
 using System.Xml;
-using System.Collections.Generic;
-//using System.Drawing.Imaging;
-//using System.Drawing;
 
 /*
  * Must run this on the database
@@ -18,11 +14,6 @@ CREATE ASSEMBLY
     [System.DirectoryServices.AccountManagement] from 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.DirectoryServices.AccountManagement.dll'
     with permission_set = UNSAFE --Fails if not 64 on 64 bit machines 
 GO
-
- CREATE ASSEMBLY  
-    [System.Drawing] 
-	from 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Drawing.dll'
-    with permission_set = UNSAFE --Fails if not 64 on 64 bit machines 
 */
 
 public partial class StoredProcedures
@@ -38,6 +29,7 @@ public partial class StoredProcedures
         System.IO.StreamWriter file = CreateLogFile();
 
         SearchResultCollection results = null;
+        Int32 itemcount = 0;
         try
         {
             XmlDocument doc = new XmlDocument();
@@ -59,6 +51,7 @@ public partial class StoredProcedures
             results = searcher.FindAll();
             foreach (SearchResult searchResult in results)
             {
+                itemcount++;
                 DirectoryEntry item = searchResult.GetDirectoryEntry();
                 row = tbl.NewRow();
 
@@ -134,22 +127,23 @@ public partial class StoredProcedures
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
-            file.WriteLine("COMException: " + exception);
+            SqlContext.Pipe.Send("COMException in clr_GetADobjects. ItemCounter = " + itemcount.ToString());
+            throw;
         }
         catch (InvalidOperationException)
         {
-            InvalidOperationException InvOpEx = new InvalidOperationException();
-            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
+            SqlContext.Pipe.Send("InvalidOperationException in clr_GetADobjects. ItemCounter = " + itemcount.ToString());
+            throw;
         }
         catch (NotSupportedException)
         {
-            NotSupportedException NotSuppEx = new NotSupportedException();
-            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
+            SqlContext.Pipe.Send("NotSupportedException in clr_GetADobjects. ItemCounter = " + itemcount.ToString());
+            throw;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            file.WriteLine("Exception: " + ex.Message);
+            SqlContext.Pipe.Send("Exception in clr_GetADobjects. ItemCounter = " + itemcount.ToString());
+            throw;
         }
         finally
         {
@@ -168,10 +162,11 @@ public partial class StoredProcedures
         System.IO.StreamWriter file = CreateLogFile();
 
         SearchResultCollection results = null;
+        Int32 itemcount = 0;
         try
         {
             DataTable tbl = new DataTable();
-            tbl.Columns.Add("UserGUID", typeof(Guid));
+            tbl.Columns.Add("ObjectGUID", typeof(Guid));
             tbl.Columns.Add("Width", typeof(int));
             tbl.Columns.Add("Height", typeof(int));
             tbl.Columns.Add("Photo", typeof(byte[]));
@@ -182,51 +177,59 @@ public partial class StoredProcedures
             searcher.Filter = (string)ADfilter;
             searcher.PageSize = 500;
 
-            //string folder = "C:\\ProgramData\\GetADobjects";
-
             results = searcher.FindAll();
             foreach (SearchResult searchResult in results)
             {
+                itemcount++;
                 DirectoryEntry item = searchResult.GetDirectoryEntry();
 
                 PropertyValueCollection prop = GetADproperty(item, "thumbnailphoto");
                 if (prop == null)
                     continue;
-                //System.Drawing.Size imgsize = GetImageSize((byte[])prop[0]);
-                ImgSize imgsize = ImageHeader.GetDimensions((byte[])prop[0]);
+
+                // Get image size
+                ImgSize imgsize = new ImgSize(0, 0);
+                try
+                {
+                    imgsize = ImageHeader.GetDimensions((byte[])prop[0]);
+                }
+                catch(Exception ex)
+                {
+                    SqlContext.Pipe.Send("Warning: Get image size failed for user (" + GetDistinguishedName(item) + ")"
+                        + " Exception: " + ex.Message);
+                }
+
                 row = tbl.NewRow();
                 row[0] = item.Guid;
-                row[1] = imgsize.Width;
-                row[2] = imgsize.Height;
+                if (!imgsize.IsEmpty()) // Image size will be NULL unless size has been read from the image header.
+                {
+                    row[1] = imgsize.Width;
+                    row[2] = imgsize.Height;
+                }
                 row[3] = prop[0];
                 tbl.Rows.Add(row);
-
-                //string usr = (string)item.Properties["samaccountname"][0];
-                //string filepath = Path.Combine(folder, usr + ".jpg");
-                //File.WriteAllBytes(filepath, (byte[])prop[0]);
-
-               // GetImageMetadata((byte[])prop[0], file);
             }
             DataSetUtilities.SendDataTable(tbl);
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
-            file.WriteLine("COMException: " + exception);
+            SqlContext.Pipe.Send("COMException in clr_GetADusersPhotos. ItemCounter = " + itemcount.ToString());
+            throw;
         }
         catch (InvalidOperationException)
         {
-            InvalidOperationException InvOpEx = new InvalidOperationException();
-            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
+            SqlContext.Pipe.Send("InvalidOperationException in clr_GetADusersPhotos. ItemCounter = " + itemcount.ToString());
+            throw;
         }
         catch (NotSupportedException)
         {
-            NotSupportedException NotSuppEx = new NotSupportedException();
-            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
+            SqlContext.Pipe.Send("NotSupportedException in clr_GetADusersPhotos. ItemCounter = " + itemcount.ToString());
+            throw;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            file.WriteLine("Exception: " + ex.Message);
+            SqlContext.Pipe.Send("Exception in clr_GetADusersPhotos. ItemCounter = " + itemcount.ToString());
+            throw;
         }
         finally
         {
@@ -238,70 +241,6 @@ public partial class StoredProcedures
         }
         file.Close();
     }   // endof: clr_GetADusersPhotos
-
-    private static System.Drawing.Size GetImageSize(byte[] imagedata)
-    {
-        MemoryStream memstream = null;
-        System.Drawing.Image image = null;
-        System.Drawing.Size imgsize = new System.Drawing.Size(0, 0);
-        try
-        {
-            // Create an Image object. 
-            memstream = new MemoryStream(imagedata);
-            image = System.Drawing.Image.FromStream(memstream);
-            imgsize = image.Size;
-        }
-        catch (Exception ex)
-        {
-            //file.WriteLine("Exception: " + ex.Message);
-        }
-        finally
-        {
-            if (memstream != null)
-                memstream.Close();
-        }
-        return imgsize;
-    }
-
-    //private static void GetImageMetadata(byte[] imagedata, System.IO.StreamWriter file)
-    //{
-    //    MemoryStream memstream = null;
-    //    System.Drawing.Image image = null;
-    //    try
-    //    {
-    //        // Create an Image object. 
-    //        memstream = new MemoryStream(imagedata);
-    //        image = System.Drawing.Image.FromStream(memstream);
-
-    //        // Get the PropertyItems property from image.
-    //        PropertyItem[] propItems = image.PropertyItems;
-
-    //        // For each PropertyItem in the array, display the ID, type, and  
-    //        // length. 
-    //        int count = 0;
-    //        string ln = "";
-    //        foreach (PropertyItem propItem in propItems)
-    //        {
-    //            ln = "Property Item " + count.ToString();
-    //            ln += ",   iD: 0x" + propItem.Id.ToString("x");
-    //            ln += ",   type: " + propItem.Type.ToString();
-    //            ln += ",   length: " + propItem.Len.ToString() + " bytes";
-    //            file.WriteLine(ln);
-    //            count++;
-    //        }
-
-    //        file.WriteLine("-------------------------------------------------------");
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        file.WriteLine("Exception: " + ex.Message);
-    //    }
-    //    finally
-    //    {
-    //        if (memstream != null)
-    //            memstream.Close();
-    //    }
-    //}
 
     [Microsoft.SqlServer.Server.SqlProcedure]
     public static void clr_GetADpropertiesToFile(SqlString ADpath, SqlString ADfilter)
@@ -358,24 +297,9 @@ public partial class StoredProcedures
                 file.WriteLine("---------------------------------------------------------");
             }
         }
-        catch (System.Runtime.InteropServices.COMException)
+        catch
         {
-            System.Runtime.InteropServices.COMException exception = new System.Runtime.InteropServices.COMException();
-            file.WriteLine("COMException: " + exception);
-        }
-        catch (InvalidOperationException)
-        {
-            InvalidOperationException InvOpEx = new InvalidOperationException();
-            file.WriteLine("InvalidOperationException: " + InvOpEx.Message);
-        }
-        catch (NotSupportedException)
-        {
-            NotSupportedException NotSuppEx = new NotSupportedException();
-            file.WriteLine("NotSupportedException: " + NotSuppEx.Message);
-        }
-        catch (Exception ex)
-        {
-            file.WriteLine("Exception: " + ex.Message);
+            throw;
         }
         finally
         {
@@ -426,7 +350,8 @@ public partial class StoredProcedures
             }
             catch (Exception ex)
             {
-                //file.WriteLine("Exception on AD property (" + ADpropName + "). Error: " + ex.Message);
+                SqlContext.Pipe.Send("Warning: GetADproperty (" + ADpropName + ") failed for user (" + GetDistinguishedName(item) + ")"
+                        + " Exception: " + ex.Message);
             }
         }
         return prop;
@@ -443,11 +368,30 @@ public partial class StoredProcedures
             }
             catch (Exception ex)
             {
-                //file.WriteLine("Exception on AD property (" + ADpropName + "). Error: " + ex.Message);
+                SqlContext.Pipe.Send("Warning: Get_userAccountControl failed for user (" + GetDistinguishedName(item) + ")"
+                        + " Exception: " + ex.Message);
             }
         }
         return uac;
     }
+
+    //private static Int64 GetFileTime(DirectoryEntry item, string ADpropName)
+    //{
+    //    Int64 time = 0;
+    //    if (item.Properties.Contains(ADpropName))
+    //    {
+    //        try
+    //        {
+    //            time = (Int64)item.Properties[ADpropName][0];
+    //        }
+    //        catch (Exception ex)
+    //        {
+    //            SqlContext.Pipe.Send("Warning: GetFileTime (" + ADpropName + ") failed for object (" + GetDistinguishedName(item) + ")"
+    //                    + " Exception: " + ex.Message);
+    //        }
+    //    }
+    //    return time;
+    //}
 
     private static Int64 GetFileTime(SearchResult sr, string ADpropName)
     {
@@ -460,7 +404,8 @@ public partial class StoredProcedures
             }
             catch (Exception ex)
             {
-                //file.WriteLine("Exception on AD property (" + ADpropName + "). Error: " + ex.Message);
+                SqlContext.Pipe.Send("Warning: GetFileTime (" + ADpropName + ") failed for object (" + GetDistinguishedName(sr) + ")"
+                        + " Exception: " + ex.Message);
             }
         }
         return time;
@@ -483,6 +428,42 @@ public partial class StoredProcedures
             }
         }
         return SID;
+    }
+
+    // Used when reporting error
+    private static string GetDistinguishedName(DirectoryEntry item)
+    {
+        string ds = "";
+        if (item.Properties.Contains("distinguishedname"))
+        {
+            try
+            {
+                ds = (string)item.Properties["distinguishedname"][0];
+            }
+            catch
+            {   // ignore exception.
+                ds = "[GetDistinguishedName failed]";
+            }
+        }
+        return ds;
+    }
+
+    // Used when reporting error
+    private static string GetDistinguishedName(SearchResult sr)
+    {
+        string ds = "";
+        if (sr.Properties.Contains("distinguishedname"))
+        {
+            try
+            {
+                ds = (string)sr.Properties["distinguishedname"][0];
+            }
+            catch
+            {   // ignore exception.
+                ds = "[GetDistinguishedName failed]";
+            }
+        }
+        return ds;
     }
 
     private static string GetGroupCategory(PropertyValueCollection ADgrptype)
@@ -534,7 +515,7 @@ public partial class StoredProcedures
         }
         catch(Exception ex)
         {
-
+            SqlContext.Pipe.Send("Warning: SaveGroupMembersToXml (" + ParentDS + ") failed. Exception: " + ex.Message);
         }
     }
 }   // endof: StoredProcedures partial class
@@ -860,6 +841,12 @@ public struct ImgSize
         this.Width = width;
         this.Height = height;
     }
+    public bool IsEmpty()
+    {
+        if (Width == 0 && Height == 0)
+            return true;
+        return false;
+    }
 };
 
 // Source: http://www.codeproject.com/Articles/35978/Reading-Image-Headers-to-Get-Width-and-Height
@@ -870,16 +857,14 @@ public struct ImgSize
 /// </summary>
 public static class ImageHeader
 {
-    const string errorMessage = "Could not recognise image format.";
-
     private static Dictionary<byte[], Func<BinaryReader, ImgSize>> imageFormatDecoders = new Dictionary<byte[], Func<BinaryReader, ImgSize>>()
-        { 
-            { new byte[] { 0xff, 0xd8 }, DecodeJfif }, 
-            { new byte[] { 0x42, 0x4D }, DecodeBitmap }, 
-            { new byte[] { 0x47, 0x49, 0x46, 0x38, 0x37, 0x61 }, DecodeGif }, 
-            { new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 }, DecodeGif }, 
-            { new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, DecodePng },
-        };
+    { 
+        { new byte[] { 0xff, 0xd8 }, DecodeJfif }, 
+        { new byte[] { 0x42, 0x4D }, DecodeBitmap }, 
+        { new byte[] { 0x47, 0x49, 0x46, 0x38, 0x37, 0x61 }, DecodeGif }, 
+        { new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 }, DecodeGif }, 
+        { new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, DecodePng },
+    };
 
     public static ImgSize GetDimensions(byte[] imgdata)
     {
@@ -891,20 +876,8 @@ public static class ImageHeader
 
             using (BinaryReader binaryReader = new BinaryReader(memstream))
             {
-                try
-                {
-                    imgsize = GetDimensions(binaryReader);
-                }
-                catch (ArgumentException e)
-                {
-                    //string newMessage = string.Format("{0} file: '{1}' ", errorMessage, path);
-
-                    //throw new ArgumentException(newMessage, "path", e);
-                }
+                imgsize = GetDimensions(binaryReader);
             }
-        }
-        catch (ArgumentException)
-        {
         }
         finally
         {
@@ -935,8 +908,7 @@ public static class ImageHeader
                 }
             }
         }
-
-        throw new ArgumentException(errorMessage, "binaryReader");
+        return new ImgSize(0, 0);
     }
 
     private static bool StartsWith(byte[] thisBytes, byte[] thatBytes)
@@ -948,7 +920,6 @@ public static class ImageHeader
                 return false;
             }
         }
-
         return true;
     }
 
@@ -1031,15 +1002,13 @@ public static class ImageHeader
                 binaryReader.ReadBytes(chunkLength - 2);
             }
         }
-
-        throw new ArgumentException(errorMessage);
+        return new ImgSize(0, 0);
     }
 }
 
 // Source: https://msdn.microsoft.com/en-us/library/ff878201.aspx
 public static class DataSetUtilities
 {
-
     public static void SendDataSet(DataSet ds)
     {
         if (ds == null)

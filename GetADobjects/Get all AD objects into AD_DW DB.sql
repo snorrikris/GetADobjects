@@ -205,3 +205,31 @@ DELETE;
 
 DROP TABLE ##ADgroup_members;
 
+-------------------
+-- Users photos
+-------------------
+
+-- Create (global) temp table dynamically. Note is global cuz of scope issue.
+SET @table_name = 'dbo.ADusersPhotos';
+SET @tempTableName = '##ADusersPhotos';
+SET @SQL = '';
+EXECUTE [dbo].[usp_GenerateTempTableScript] @table_name, @tempTableName, @SQL OUTPUT;
+EXEC (@SQL);
+
+-- Get all photos from AD into temp table
+SET @ADfilter = '(&(objectCategory=person)(objectClass=user))';
+INSERT INTO ##ADusersPhotos EXEC clr_GetADusersPhotos @ADpath, @ADfilter;
+
+-- Generate MERGE statement dynamically from table definition.
+SET @TableName = 'ADusersPhotos';
+SET @SQL = '';
+EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
+
+-- Execute MERGE statement.
+EXECUTE (@SQL)
+
+-- DROP temp table.
+SET @SQL = 'DROP TABLE ' + @tempTableName + ';';
+EXECUTE (@SQL)
+
+
