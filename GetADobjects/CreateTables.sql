@@ -54,6 +54,7 @@ CREATE TABLE [dbo].[ADusers](
 [LastLogonDate] [datetime] NULL,
 [LogonCount] [int] NULL,
 [PasswordLastSet] [datetime] NULL,
+[PasswordExpiryTime] [datetime] NULL,
 [AccountLockoutTime] [datetime] NULL,
 [AccountExpirationDate] [datetime] NULL,
 [LogonWorkstations] [nvarchar](128) NULL,
@@ -74,6 +75,7 @@ CREATE TABLE [dbo].[ADusers](
 [ObjectClass] [nvarchar](64) NULL,
 [SID] [nvarchar](128) NOT NULL,
 [ObjectGUID] [uniqueidentifier] NOT NULL,
+[ManagerGUID] [uniqueidentifier] NULL,
 CONSTRAINT [PK_UserGUID] PRIMARY KEY CLUSTERED 
 (
 	[ObjectGUID] ASC

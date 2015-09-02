@@ -56,6 +56,7 @@ public partial class StoredProcedures
                 row = tbl.NewRow();
 
                 UACflags Item_UAC_flags = null;
+                Int64 UserPasswordExpiryTimeComputed = 0;
                 PropertyValueCollection ADGroupType = null;
 
                 for (int i = 0; i < TblData.collist.Length; i++)
@@ -64,6 +65,11 @@ public partial class StoredProcedures
                     switch(coldef.OPtype)
                     {
                         case "Adprop":
+                            if (coldef.ADpropName == "useraccountcontrol" && Item_UAC_flags != null)
+                            {
+                                row[i] = Item_UAC_flags.ADobj_flags;
+                                break;
+                            }
                             PropertyValueCollection prop = GetADproperty(item, coldef.ADpropName);
                             if (prop != null)
                                 row[i] = prop.Value;
@@ -71,7 +77,9 @@ public partial class StoredProcedures
 
                         case "UAC":
                             if (Item_UAC_flags == null)
-                                Item_UAC_flags = new UACflags(Get_userAccountControl(item));
+                            {   // Get UAC flags only once per AD object.
+                                Item_UAC_flags = new UACflags(Get_userAccountControl(item, out UserPasswordExpiryTimeComputed));
+                            }
                             row[i] = Item_UAC_flags.GetFlag(coldef.ADpropName);
                             break;
 
@@ -84,7 +92,11 @@ public partial class StoredProcedures
                             break;
 
                         case "filetime":
-                            Int64 time = GetFileTime(searchResult, coldef.ADpropName);
+                            Int64 time = 0;
+                            if (coldef.ADpropName == "msDS-UserPasswordExpiryTimeComputed")
+                                time = UserPasswordExpiryTimeComputed;
+                            else
+                                time = GetFileTime(searchResult, coldef.ADpropName);
                             if(time > 0 && time != 0x7fffffffffffffff)
                             {
                                 row[i] = DateTime.FromFileTimeUtc(time);
@@ -254,7 +266,18 @@ public partial class StoredProcedures
             DirectoryEntry entry = new DirectoryEntry((string)ADpath);
 
             DirectorySearcher mySearcher = new DirectorySearcher(entry);
+            mySearcher.PropertiesToLoad.Add("msDS-User-Account-Control-Computed");
 
+            
+            mySearcher.PropertiesToLoad.Add("ms-DS-UserAccountAutoLocked"); // *
+            //mySearcher.PropertiesToLoad.Add("msDS-User-Account-Control-Computed");  // *
+            mySearcher.PropertiesToLoad.Add("msDS-UserAccountDisabled");
+            mySearcher.PropertiesToLoad.Add("msDS-UserDontExpirePassword");
+            mySearcher.PropertiesToLoad.Add("ms-DS-UserEncryptedTextPasswordAllowed");
+            mySearcher.PropertiesToLoad.Add("msDS-UserPasswordExpired");    // *
+            mySearcher.PropertiesToLoad.Add("ms-DS-UserPasswordNotRequired");
+            mySearcher.PropertiesToLoad.Add("userAccountControl");
+            
             mySearcher.Filter = (string)ADfilter;
 
             mySearcher.PageSize = 500;
@@ -264,6 +287,9 @@ public partial class StoredProcedures
             foreach (SearchResult searchResult in results)
             {
                 DirectoryEntry item = searchResult.GetDirectoryEntry();
+                Int64 exptm;
+                Int32 uac = Get_userAccountControl(item, out exptm);
+                file.WriteLine("uac: 0x" + uac.ToString("X"));
 
                 // Iterate through each property name in each SearchResult.
                 foreach (string propertyKey in searchResult.Properties.PropertyNames)
@@ -357,22 +383,137 @@ public partial class StoredProcedures
         return prop;
     }
 
-    private static Int32 Get_userAccountControl(DirectoryEntry item)
+    /// <summary>
+    /// Get User Account Control flags.
+    /// </summary>
+    /// <param name="item"></param>
+    /// <returns></returns>
+    /// <remarks>
+    /// References:
+    /// https://msdn.microsoft.com/en-us/library/cc223145.aspx
+    /// https://msdn.microsoft.com/en-us/library/cc223393.aspx
+    /// https://msdn.microsoft.com/en-us/library/ms677840(v=vs.85).aspx
+    /// https://technet.microsoft.com/en-us/library/ee198831.aspx
+    /// http://stackoverflow.com/questions/25213146/constructed-attributes-in-active-directory-global-catalog-get-password-expiry-f
+    /// </remarks>
+    private static Int32 Get_userAccountControl(DirectoryEntry item, out Int64 PwdExpComputed)
     {
         Int32 uac = 0;
-        if (item.Properties.Contains("userAccountControl"))
+        PwdExpComputed = 0;
+        SearchResult res = null;
+        try
         {
-            try
-            {
-                uac = (Int32)item.Properties["userAccountControl"][0];
-            }
-            catch (Exception ex)
-            {
-                SqlContext.Pipe.Send("Warning: Get_userAccountControl failed for user (" + GetDistinguishedName(item) + ")"
-                        + " Exception: " + ex.Message);
-            }
+            // Need to query AD for every user to get up to date msDS-User-Account-Control-Computed.
+            DirectorySearcher srch = new DirectorySearcher(item, "(objectClass=*)",
+                new string[] { "userAccountControl", "msDS-User-Account-Control-Computed", "msDS-UserPasswordExpiryTimeComputed" },
+                SearchScope.Base);
+
+            if ((res = srch.FindOne()) == null)
+                return uac;
+
+            Int32 AC1 = 0, AC2 = 0;
+            if(res.Properties.Contains("userAccountControl"))
+                AC1 = Convert.ToInt32(res.Properties["userAccountControl"][0]);
+            if(res.Properties.Contains("msDS-User-Account-Control-Computed"))
+                AC2 = Convert.ToInt32(res.Properties["msDS-User-Account-Control-Computed"][0]);
+            uac = AC1 | AC2;
+            if (IsUserCannotChangePassword(item))
+                uac |= 0x40;
+
+            PwdExpComputed = GetFileTime(res, "msDS-UserPasswordExpiryTimeComputed");
+        }
+        catch (Exception ex)
+        {
+            SqlContext.Pipe.Send("Warning: Get_userAccountControl failed for user (" + GetDistinguishedName(item) + ")"
+                    + " Exception: " + ex.Message);
         }
         return uac;
+    }
+
+    /// <summary>
+    /// Get "User cannot change password" property from AD user object.
+    /// </summary>
+    /// <param name="user"></param>
+    /// <returns>true if user cannot change password.</returns>
+    /// <remarks>
+    /// This function gets the security descripto of the user from AD in SDDL form.
+    /// and parses the ACE strings for "Change password".
+    /// References:
+    /// http://stackoverflow.com/questions/7724110/convert-sddl-to-readable-text-in-net
+    /// https://msdn.microsoft.com/en-us/library/windows/desktop/aa379567(v=vs.85).aspx
+    /// https://msdn.microsoft.com/en-us/library/windows/desktop/aa379570(v=vs.85).aspx
+    /// https://msdn.microsoft.com/en-us/library/windows/desktop/aa374928(v=vs.85).aspx
+    /// https://msdn.microsoft.com/en-us/library/windows/desktop/aa379637(v=vs.85).aspx
+    /// http://www.netid.washington.edu/documentation/domains/sddl.aspx
+    /// http://blogs.technet.com/b/askds/archive/2008/04/18/the-security-descriptor-definition-language-of-love-part-1.aspx
+    /// https://technet.microsoft.com/en-us/library/ee198831.aspx
+    /// https://msdn.microsoft.com/en-us/library/aa746398.aspx
+    /// More (on the problem):
+    /// http://stackoverflow.com/questions/29812872/find-users-who-cannot-change-their-password
+    /// http://devblog.rayonnant.net/2011/04/ad-net-toggle-users-cant-change.html
+    /// https://msdn.microsoft.com/en-us/library/system.directoryservices.accountmanagement.authenticableprincipal.usercannotchangepassword(v=vs.100).aspx
+    /// </remarks>
+    public static bool IsUserCannotChangePassword(DirectoryEntry user)
+    {
+        bool cantChange = false;
+        try
+        {
+            ActiveDirectorySecurity userSecurity = user.ObjectSecurity;
+            string userSDDL = userSecurity.GetSecurityDescriptorSddlForm(System.Security.AccessControl.AccessControlSections.Access);
+            int ix_chgpwdGUID = -1, startIdx = 0;
+
+            // Find ACE strings for "Change password" permission on "this" user.
+            while ((ix_chgpwdGUID = userSDDL.IndexOf(
+                "AB721A53-1E2F-11D0-9819-00AA0040529B", // <-- GUID of "change password" permission.
+                startIdx, StringComparison.CurrentCultureIgnoreCase)) > 0)
+            {
+                // ACE string format (ace_type;ace_flags;rights;object_guid;inherit_object_guid;account_sid;(resource_attribute))
+                // e.g. (OA;;CR;ab721a53-1e2f-11d0-9819-00aa0040529b;;WD)
+                int ix_ace_type = -1, ix_ace_flags = -1, ix_rights = -1, ix_object_guid = -1,
+                    ix_inherit_object_guid = -1, ix_account_sid = -1, ixStart = -1;
+                string ace_type = "", ace_flags = "", rights = "", object_guid = "", inherit_object_guid = "", account_sid = "";
+
+                // Find starting '(' of the ACE string.
+                if (ix_chgpwdGUID > 0)
+                    ixStart = userSDDL.LastIndexOf('(', ix_chgpwdGUID);  // Find previous '('
+                // Find all expected ';' in the ACE string.
+                if (ixStart > 0)
+                    ix_ace_type = userSDDL.IndexOf(';', ixStart + 1);
+                if (ix_ace_type > 0)
+                    ix_ace_flags = userSDDL.IndexOf(';', ix_ace_type + 1);
+                if (ix_ace_flags > 0)
+                    ix_rights = userSDDL.IndexOf(';', ix_ace_flags + 1);
+                if (ix_rights > 0)
+                    ix_object_guid = userSDDL.IndexOf(';', ix_rights + 1);
+                if (ix_object_guid > 0)
+                    ix_inherit_object_guid = userSDDL.IndexOf(';', ix_object_guid + 1);
+                // Find the closing ')'.
+                if (ix_inherit_object_guid > 0)
+                    ix_account_sid = userSDDL.IndexOf(')', ix_inherit_object_guid + 1);
+                if (ix_account_sid > 0)  // All expected tokens found?
+                {
+                    // Get string values from ACE string.
+                    ace_type = userSDDL.Substring(ixStart + 1, (ix_ace_type - ixStart) - 1);
+                    ace_flags = userSDDL.Substring(ix_ace_type + 1, (ix_ace_flags - ix_ace_type) - 1);
+                    rights = userSDDL.Substring(ix_ace_flags + 1, (ix_rights - ix_ace_flags) - 1);
+                    object_guid = userSDDL.Substring(ix_rights + 1, (ix_object_guid - ix_rights) - 1);
+                    inherit_object_guid = userSDDL.Substring(ix_object_guid + 1, (ix_inherit_object_guid - ix_object_guid) - 1);
+                    account_sid = userSDDL.Substring(ix_inherit_object_guid + 1, (ix_account_sid - ix_inherit_object_guid) - 1);
+                }
+                // If Change password permission denied (OD) for Everyone (WD)
+                //   OR Change password denied (OD) for 'SELF' (PS)
+                // Then "User cannot change password" is set on "this" user.
+                if ((ace_type == "OD" && account_sid == "WD")
+                    || (ace_type == "OD" && account_sid == "PS"))
+                    cantChange = true;
+
+                startIdx = ix_account_sid + 1;   // Continue searching after current ACE string.
+            }
+        }
+        catch (Exception ex)
+        {
+        }
+        return cantChange;
     }
 
     //private static Int64 GetFileTime(DirectoryEntry item, string ADpropName)
@@ -424,7 +565,8 @@ public partial class StoredProcedures
             }
             catch (Exception ex)
             {
-                //file.WriteLine("Exception on AD property (" + ADpropName + "). Error: " + ex.Message);
+                SqlContext.Pipe.Send("Warning: GetSID (" + ADpropName + ") failed for object (" + GetDistinguishedName(item) + ")"
+                        + " Exception: " + ex.Message);
             }
         }
         return SID;
@@ -542,7 +684,7 @@ public class UACflags
         this.flagsLookup.Add("INTERDOMAIN_TRUST_ACCOUNT", 0x0800);
         this.flagsLookup.Add("WORKSTATION_TRUST_ACCOUNT", 0x1000);
         this.flagsLookup.Add("SERVER_TRUST_ACCOUNT", 0x2000);
-        this.flagsLookup.Add("DONT_EXPIRE_PASSWORD", 0x10000);
+        this.flagsLookup.Add("DONT_EXPIRE_PASSWD", 0x10000);
         this.flagsLookup.Add("MNS_LOGON_ACCOUNT", 0x20000);
         this.flagsLookup.Add("SMARTCARD_REQUIRED", 0x40000);
         this.flagsLookup.Add("TRUSTED_FOR_DELEGATION", 0x80000);
@@ -557,12 +699,16 @@ public class UACflags
     public Boolean GetFlag(string UAC_flag)
     {
         Boolean ret_flag = false;
-        if(flagsLookup.ContainsKey(UAC_flag))
+        if (flagsLookup.ContainsKey(UAC_flag))
         {
             Int32 mask = flagsLookup[UAC_flag];
             ret_flag = ((ADobj_flags & mask) != 0) ? true : false;
             if (UAC_flag == "ACCOUNTDISABLE")
                 ret_flag = !ret_flag;
+        }
+        else
+        {
+            SqlContext.Pipe.Send("Warning: UAC flag not found in list of flags (" + UAC_flag + ").");
         }
         return ret_flag;
     }
@@ -660,6 +806,7 @@ public class ADcolsTable
             new TableColDef("LastLogonDate", typeof(DateTime), "lastlogon","filetime"),
             new TableColDef("LogonCount", typeof(Int32), "logoncount","Adprop"),
             new TableColDef("PasswordLastSet", typeof(DateTime), "pwdlastset","filetime"),
+            new TableColDef("PasswordExpiryTime", typeof(DateTime), "msDS-UserPasswordExpiryTimeComputed","filetime"),
             new TableColDef("AccountLockoutTime", typeof(DateTime), "lockouttime","filetime"),
             new TableColDef("AccountExpirationDate", typeof(DateTime), "accountexpires","filetime"),
             new TableColDef("LogonWorkstations", typeof(String), "userworkstations","Adprop"),

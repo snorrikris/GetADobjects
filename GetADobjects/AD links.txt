@@ -52,3 +52,38 @@ http://www.media.mit.edu/pia/Research/deepview/exif.html
 http://www.codeproject.com/Articles/35978/Reading-Image-Headers-to-Get-Width-and-Height
 http://stackoverflow.com/questions/11168558/get-image-width-and-height-without-creating-bitmap-object
 http://stackoverflow.com/questions/111345/getting-image-dimensions-without-reading-the-entire-file
+
+
+msDS-User-Account-Control-Computed
+https://msdn.microsoft.com/en-us/library/cc223393.aspx
+https://msdn.microsoft.com/en-us/library/ms677840(v=vs.85).aspx
+http://stackoverflow.com/questions/1394025/active-directory-ldap-check-account-locked-out-password-expired
+http://www.informit.com/articles/article.aspx?p=474649&seqNum=3
+
+The .NET Developer's Guide to Directory Services Programming
+https://books.google.is/books?id=kGApqjobEfsC&pg=PA364&lpg=PA364&dq=directoryentry+filetime&source=bl&ots=p6qnTaQKO4&sig=HfyYXTV7CbDpJ07q4KsYl6Ehry4&hl=is&sa=X&ved=0CDIQ6AEwA2oVChMIwoHoneu4xwIVyVkaCh2uiwZM#v=onepage&q=directoryentry%20filetime&f=false
+
+AD attributes
+http://www.rlmueller.net/UserAttributes.htm
+
+Constructed attributes in Active Directory Global Catalog (get password expiry for accounts)
+http://stackoverflow.com/questions/25213146/constructed-attributes-in-active-directory-global-catalog-get-password-expiry-f
+
+Attributes for AD Users : userAccountControl
+http://www.selfadsi.org/ads-attributes/user-userAccountControl.htm#UF_PASSWORD_EXPIRED
+
+Í skoðun:
+https://msdn.microsoft.com/en-us/library/ms677840(v=vs.85).aspx
+http://stackoverflow.com/questions/1394025/active-directory-ldap-check-account-locked-out-password-expired
+http://www.informit.com/articles/article.aspx?p=474649&seqNum=3
+https://social.msdn.microsoft.com/Forums/vstudio/en-US/02b09337-57f1-4ade-9838-e6af35d9e0a3/problem-communicating-with-the-activedirectory?forum=csharpgeneral
+http://stackoverflow.com/questions/4929027/slow-ad-properties-retrieval-in-c-sharp
+http://stackoverflow.com/questions/25213146/constructed-attributes-in-active-directory-global-catalog-get-password-expiry-f
+https://msdn.microsoft.com/en-us/library/cc223410.aspx
+http://www.selfadsi.org/ads-attributes/user-userAccountControl.htm#UF_PASSWORD_EXPIRED
+http://dunnry.com/blog/CategoryView,category,Lockout.aspx
+https://msdn.microsoft.com/en-us/library/cc223393.aspx
+https://msdn.microsoft.com/en-us/library/cc221241.aspx
+http://praveen-rangarajan.blogspot.com/2009/06/c-class-to-validate-user-credentials-on.html
+http://www.rlmueller.net/UserAttributes.htm
+https://support.microsoft.com/en-us/kb/305144
