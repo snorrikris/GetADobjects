@@ -99,7 +99,8 @@ public partial class StoredProcedures
                                 time = GetFileTime(searchResult, coldef.ADpropName);
                             if(time > 0 && time != 0x7fffffffffffffff && time != -1)
                             {
-                                row[i] = DateTime.FromFileTimeUtc(time);
+                                //row[i] = DateTime.FromFileTimeUtc(time);
+                                row[i] = DateTime.FromFileTime(time);
                             }
                             break;
 
