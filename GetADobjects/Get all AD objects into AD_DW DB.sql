@@ -7,6 +7,7 @@ DECLARE @ADpath nvarchar(64) = 'LDAP://DC=veca,DC=is';
 -------------------
 -- Users
 -------------------
+PRINT 'Get users';
 
 -- Create ##ADgroups (global) temp table dynamically. Note is global cuz of scope issue.
 DECLARE @table_name sysname = 'dbo.ADusers';
@@ -15,7 +16,7 @@ DECLARE @SQL nvarchar(max) = '';
 EXECUTE [dbo].[usp_GenerateTempTableScript] @table_name, @tempTableName, @SQL OUTPUT;
 EXEC (@SQL);
 
--- Get all groups from AD into temp table
+-- Get all users from AD into temp table
 DECLARE @ADfilter nvarchar(64) = '(&(objectCategory=person)(objectClass=user))';
 DECLARE @Members XML;
 INSERT INTO ##ADusers EXEC dbo.clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
@@ -26,16 +27,33 @@ SET @SQL = '';
 EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
 
 -- Execute MERGE statement.
+PRINT 'MERGE users';
 EXECUTE (@SQL)
 
 -- DROP temp table.
 SET @SQL = 'DROP TABLE ' + @tempTableName + ';';
 EXECUTE (@SQL)
 
+-- UPDATE [ManagerGUID]
+UPDATE [dbo].[ADusers] 
+SET [ManagerGUID] = (SELECT [ObjectGUID] FROM [dbo].[ADusers] WHERE a.[Manager] = DistinguishedName)
+FROM [dbo].[ADusers] a WHERE Manager IS NOT NULL
+
+--Example query
+--SELECT [DisplayName],[Title],[Department],[Company]
+--	  ,CASE WHEN [ManagerGUID] IS NULL THEN '' 
+--			WHEN [ManagerGUID] IS NOT NULL THEN (SELECT DisplayName FROM [dbo].[ADusers] WHERE a.[ManagerGUID] = [ObjectGUID])
+--	  END AS ManagerName
+--FROM [dbo].[ADusers] a WHERE ManagerGUID IS NOT NULL
+
+-- UPDATE UserMustChangePasswordAtNextLogon
+UPDATE [dbo].[ADusers] 
+SET UserMustChangePasswordAtNextLogon = (CASE WHEN [PasswordLastSet] IS NULL AND [PasswordNeverExpires] = 0 AND [PasswordNotRequired] = 0 THEN 1 ELSE 0 END);
 
 -------------------
 -- Contacts
 -------------------
+PRINT 'Get Contacts';
 
 -- Create (global) temp table dynamically. Note is global cuz of scope issue.
 SET @table_name = 'dbo.ADcontacts';
@@ -44,7 +62,7 @@ SET @SQL = '';
 EXECUTE [dbo].[usp_GenerateTempTableScript] @table_name, @tempTableName, @SQL OUTPUT;
 EXEC (@SQL);
 
--- Get all groups from AD into temp table
+-- Get all Contacts from AD into temp table
 SET @ADfilter = '(&(objectCategory=person)(objectClass=contact))';
 INSERT INTO ##ADcontacts EXEC dbo.clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
 
@@ -54,6 +72,7 @@ SET @SQL = '';
 EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
 
 -- Execute MERGE statement.
+PRINT 'MERGE Contacts';
 EXECUTE (@SQL)
 
 -- DROP temp table.
@@ -64,6 +83,7 @@ EXECUTE (@SQL)
 -------------------
 -- Computers
 -------------------
+PRINT 'Get Computers';
 
 -- Create (global) temp table dynamically. Note is global cuz of scope issue.
 SET @table_name = 'dbo.ADcomputers';
@@ -82,6 +102,7 @@ SET @SQL = '';
 EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
 
 -- Execute MERGE statement.
+PRINT 'MERGE Computers';
 EXECUTE (@SQL)
 
 -- DROP temp table.
@@ -92,6 +113,7 @@ EXECUTE (@SQL)
 -------------------
 -- Well known SIDs
 -------------------
+PRINT 'Get Well known SIDs';
 
 -- Create (global) temp table dynamically. Note is global cuz of scope issue.
 SET @table_name = 'dbo.ADwell_known_sids';
@@ -100,7 +122,7 @@ SET @SQL = '';
 EXECUTE [dbo].[usp_GenerateTempTableScript] @table_name, @tempTableName, @SQL OUTPUT;
 EXEC (@SQL);
 
--- Get all groups from AD into temp table
+-- Get all Well known SIDs from AD into temp table
 DECLARE @ADfilterX nvarchar(4000) = '(|(objectSID=S-1-0)(objectSID=S-1-0-0)(objectSID=S-1-1)(objectSID=S-1-1-0)(objectSID=S-1-2)(objectSID=S-1-2-0)(objectSID=S-1-2-1)(objectSID=S-1-3)(objectSID=S-1-3-0)(objectSID=S-1-3-1)(objectSID=S-1-3-2)(objectSID=S-1-3-3)(objectSID=S-1-3-4)(objectSID=S-1-5-80-0)(objectSID=S-1-4)(objectSID=S-1-5)(objectSID=S-1-5-1)(objectSID=S-1-5-2)(objectSID=S-1-5-3)(objectSID=S-1-5-4)(objectSID=S-1-5-6)(objectSID=S-1-5-7)(objectSID=S-1-5-8)(objectSID=S-1-5-9)(objectSID=S-1-5-10)(objectSID=S-1-5-11)(objectSID=S-1-5-12)(objectSID=S-1-5-13)(objectSID=S-1-5-14)(objectSID=S-1-5-15)(objectSID=S-1-5-17)(objectSID=S-1-5-18)(objectSID=S-1-5-19)(objectSID=S-1-5-20)(objectSID=S-1-5-64-10)(objectSID=S-1-5-64-14)(objectSID=S-1-5-64-21)(objectSID=S-1-5-80)(objectSID=S-1-5-80-0)(objectSID=S-1-5-83-0)(objectSID=S-1-16-0)(objectSID=S-1-16-4096)(objectSID=S-1-16-8192)(objectSID=S-1-16-8448)(objectSID=S-1-16-12288)(objectSID=S-1-16-16384)(objectSID=S-1-16-20480)(objectSID=S-1-16-28672))';
 INSERT INTO ##ADwell_known_sids EXEC dbo.clr_GetADobjects @ADpath, @ADfilterX, @Members OUTPUT;
 
@@ -117,6 +139,7 @@ SET @SQL = '';
 EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
 
 -- Execute MERGE statement.
+PRINT 'MERGE Well known SIDs';
 EXECUTE (@SQL)
 
 -- DROP temp table.
@@ -127,6 +150,7 @@ EXECUTE (@SQL)
 -------------------
 -- Groups
 -------------------
+PRINT 'Get Groups';
 
 -- Create (global) temp table dynamically. Note is global cuz of scope issue.
 SET @table_name = 'dbo.ADgroups';
@@ -145,20 +169,16 @@ SET @SQL = '';
 EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
 
 -- Execute MERGE statement.
+PRINT 'MERGE Groups';
 EXECUTE (@SQL)
 
 -- DROP temp table.
 SET @SQL = 'DROP TABLE ' + @tempTableName + ';';
 EXECUTE (@SQL)
 
--- Create temp table for group members
---IF OBJECT_ID('tempdb..#ADgroup_members') IS NOT NULL DROP TABLE #ADgroup_members;
---CREATE TABLE #ADgroup_members(
---[GroupGUID] [uniqueidentifier] NOT NULL,
---[MemberGUID] [uniqueidentifier] NOT NULL,
---[MemberType] [nvarchar](64) NOT NULL,
---[GroupDistinguishedName] [nvarchar](512) NULL,
---[MemberDistinguishedName] [nvarchar](512) NULL);
+
+PRINT 'Get Group members';
+
 -- Create (global) temp table dynamically. Note is global cuz of scope issue.
 SET @table_name = 'dbo.ADgroup_members';
 SET @tempTableName = '##ADgroup_members';
@@ -189,6 +209,7 @@ LEFT JOIN dbo.ADusers U ON M.MemberDS = U.DistinguishedName
 LEFT JOIN dbo.ADcontacts CN ON M.MemberDS = CN.DistinguishedName
 LEFT JOIN dbo.ADwell_known_sids W ON M.MemberDS = W.DistinguishedName;
 
+PRINT 'MERGE Group members';
 MERGE dbo.ADgroup_members WITH (HOLDLOCK) AS T
 USING ##ADgroup_members AS S 
 ON (T.GroupGUID = S.GroupGUID AND T.MemberGUID = S.MemberGUID) 
@@ -208,6 +229,7 @@ DROP TABLE ##ADgroup_members;
 -------------------
 -- Users photos
 -------------------
+PRINT 'Get Users photos';
 
 -- Create (global) temp table dynamically. Note is global cuz of scope issue.
 SET @table_name = 'dbo.ADusersPhotos';
@@ -226,6 +248,7 @@ SET @SQL = '';
 EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
 
 -- Execute MERGE statement.
+PRINT 'MERGE Users photos';
 EXECUTE (@SQL)
 
 -- DROP temp table.

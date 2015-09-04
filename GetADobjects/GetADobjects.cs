@@ -97,7 +97,7 @@ public partial class StoredProcedures
                                 time = UserPasswordExpiryTimeComputed;
                             else
                                 time = GetFileTime(searchResult, coldef.ADpropName);
-                            if(time > 0 && time != 0x7fffffffffffffff)
+                            if(time > 0 && time != 0x7fffffffffffffff && time != -1)
                             {
                                 row[i] = DateTime.FromFileTimeUtc(time);
                             }
@@ -458,11 +458,12 @@ public partial class StoredProcedures
         bool cantChange = false;
         try
         {
+            // Get SDDL string for "The discretionary access control list" (DACL) section of the security descriptor from "user".
             ActiveDirectorySecurity userSecurity = user.ObjectSecurity;
             string userSDDL = userSecurity.GetSecurityDescriptorSddlForm(System.Security.AccessControl.AccessControlSections.Access);
-            int ix_chgpwdGUID = -1, startIdx = 0;
 
             // Find ACE strings for "Change password" permission on "this" user.
+            int ix_chgpwdGUID = -1, startIdx = 0;
             while ((ix_chgpwdGUID = userSDDL.IndexOf(
                 "AB721A53-1E2F-11D0-9819-00AA0040529B", // <-- GUID of "change password" permission.
                 startIdx, StringComparison.CurrentCultureIgnoreCase)) > 0)
@@ -474,7 +475,7 @@ public partial class StoredProcedures
                 string ace_type = "", ace_flags = "", rights = "", object_guid = "", inherit_object_guid = "", account_sid = "";
 
                 // Find starting '(' of the ACE string.
-                if (ix_chgpwdGUID > 0)
+                //if (ix_chgpwdGUID > 0)
                     ixStart = userSDDL.LastIndexOf('(', ix_chgpwdGUID);  // Find previous '('
                 // Find all expected ';' in the ACE string.
                 if (ixStart > 0)
@@ -512,6 +513,8 @@ public partial class StoredProcedures
         }
         catch (Exception ex)
         {
+            SqlContext.Pipe.Send("Warning: IsUserCannotChangePassword function failed for user (" + GetDistinguishedName(user) + ")"
+                    + " Exception: " + ex.Message);
         }
         return cantChange;
     }
@@ -800,6 +803,7 @@ public class ADcolsTable
             new TableColDef("TrustedForDelegation", typeof(Boolean), "TRUSTED_FOR_DELEGATION","UAC"),
             new TableColDef("TrustedToAuthForDelegation", typeof(Boolean), "TRUSTED_TO_AUTH_FOR_DELEGATION","UAC"),
             new TableColDef("UseDESKeyOnly", typeof(Boolean), "USE_DES_KEY_ONLY","UAC"),
+            new TableColDef("UserMustChangePasswordAtNextLogon", typeof(Boolean), "does_not_exist_in_AD","nop"),
             new TableColDef("HomedirRequired", typeof(Boolean), "HOMEDIR_REQUIRED","UAC"),
             new TableColDef("LastBadPasswordAttempt", typeof(DateTime), "badpasswordtime","filetime"),
             new TableColDef("BadLogonCount", typeof(Int32), "badpwdcount","Adprop"),
@@ -826,7 +830,8 @@ public class ADcolsTable
             new TableColDef("ObjectCategory", typeof(String), "objectcategory","Adprop"),
             new TableColDef("ObjectClass", typeof(String), "SchemaClassName","ObjClass"),
             new TableColDef("SID", typeof(String), "objectsid","SID"),
-            new TableColDef("ObjectGUID", typeof(Guid), "Guid","ObjGuid")
+            new TableColDef("ObjectGUID", typeof(Guid), "Guid","ObjGuid"),
+            new TableColDef("ManagerGUID", typeof(Guid), "does_not_exist_in_AD","nop")
         };
     }
 

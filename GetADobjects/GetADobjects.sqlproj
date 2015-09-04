@@ -80,6 +80,7 @@
     <None Include="AD links.txt" />
     <None Include="Timing tests.txt" />
     <None Include="TestPhotoScript.sql" />
+    <None Include="AD research.docx" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Get all AD objects into AD_DW DB.sql" />

@@ -49,6 +49,7 @@ CREATE TABLE [dbo].[ADusers](
 [TrustedToAuthForDelegation] [bit] NULL,
 [UseDESKeyOnly] [bit] NULL,
 [HomedirRequired] [bit] NULL,
+[UserMustChangePasswordAtNextLogon] [bit] NULL,
 [LastBadPasswordAttempt] [datetime] NULL,
 [BadLogonCount] [int] NULL,
 [LastLogonDate] [datetime] NULL,
