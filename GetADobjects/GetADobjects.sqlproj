@@ -93,4 +93,8 @@
     <None Include="GetMembersInGroupAndSubgroups.sql" />
     <None Include="GetUsersInGroupAndSubgroups.sql" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Create_usp_GenerateMergeStatement.sql" />
+    <None Include="Create_usp_GenerateTempTableScript.sql" />
+  </ItemGroup>
 </Project>
