@@ -20,7 +20,7 @@ CREATE PROCEDURE [dbo].[usp_GenerateTempTableScript]
 AS
 BEGIN
 	SET NOCOUNT ON;
-
+	SET @SQL = '';
 DECLARE 
       @object_name SYSNAME
     , @object_id INT
@@ -34,34 +34,7 @@ WHERE s.name + '.' + o.name = @table_name
     AND o.[type] = 'U'
     AND o.is_ms_shipped = 0
 
---DECLARE @SQL NVARCHAR(4000) = ''
-
---;WITH index_column AS 
---(
---    SELECT 
---          ic.[object_id]
---        , ic.index_id
---        , ic.is_descending_key
---        , ic.is_included_column
---        , c.name
---    FROM sys.index_columns ic WITH (NOWAIT)
---    JOIN sys.columns c WITH (NOWAIT) ON ic.[object_id] = c.[object_id] AND ic.column_id = c.column_id
---    WHERE ic.[object_id] = @object_id
---),
---fk_columns AS 
---(
---     SELECT 
---          k.constraint_object_id
---        , cname = c.name
---        , rcname = rc.name
---    FROM sys.foreign_key_columns k WITH (NOWAIT)
---    JOIN sys.columns rc WITH (NOWAIT) ON rc.[object_id] = k.referenced_object_id AND rc.column_id = k.referenced_column_id 
---    JOIN sys.columns c WITH (NOWAIT) ON c.[object_id] = k.parent_object_id AND c.column_id = k.parent_column_id
---    WHERE k.parent_object_id = @object_id
---)
---SELECT @SQL = 'CREATE TABLE ' + @object_name + CHAR(13) + '(' + CHAR(13) + STUFF((
 SELECT @SQL = 'IF OBJECT_ID(''tempdb..' + @tempTableName + ''') IS NOT NULL DROP TABLE ' + @tempTableName + ';' + CHAR(13)
--- + 'GO' + CHAR(13)
  + 'CREATE TABLE ' + @tempTableName + CHAR(13) + '(' + CHAR(13) + STUFF((
     SELECT CHAR(9) + ', [' + c.name + '] ' + 
         CASE WHEN c.is_computed = 1
@@ -77,7 +50,6 @@ SELECT @SQL = 'IF OBJECT_ID(''tempdb..' + @tempTableName + ''') IS NOT NULL DROP
                        THEN '(' + CAST(c.[precision] AS VARCHAR(5)) + ',' + CAST(c.scale AS VARCHAR(5)) + ')'
                     ELSE ''
                 END +
-                --CASE WHEN c.collation_name IS NOT NULL THEN ' COLLATE ' + c.collation_name ELSE '' END +
                 CASE WHEN c.is_nullable = 1 THEN ' NULL' ELSE ' NOT NULL' END +
                 CASE WHEN dc.[definition] IS NOT NULL THEN ' DEFAULT' + dc.[definition] ELSE '' END + 
                 CASE WHEN ic.is_identity = 1 THEN ' IDENTITY(' + CAST(ISNULL(ic.seed_value, '0') AS CHAR(1)) + ',' + CAST(ISNULL(ic.increment_value, '1') AS CHAR(1)) + ')' ELSE '' END 
@@ -91,79 +63,6 @@ SELECT @SQL = 'IF OBJECT_ID(''tempdb..' + @tempTableName + ''') IS NOT NULL DROP
     ORDER BY c.column_id
     FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, CHAR(9) + ' ')
 	+ ');';
-    --+ ISNULL((SELECT CHAR(9) + ', CONSTRAINT [' + k.name + '] PRIMARY KEY (' + 
-    --                (SELECT STUFF((
-    --                     SELECT ', [' + c.name + '] ' + CASE WHEN ic.is_descending_key = 1 THEN 'DESC' ELSE 'ASC' END
-    --                     FROM sys.index_columns ic WITH (NOWAIT)
-    --                     JOIN sys.columns c WITH (NOWAIT) ON c.[object_id] = ic.[object_id] AND c.column_id = ic.column_id
-    --                     WHERE ic.is_included_column = 0
-    --                         AND ic.[object_id] = k.parent_object_id 
-    --                         AND ic.index_id = k.unique_index_id     
-    --                     FOR XML PATH(N''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, ''))
-    --        + ')' + CHAR(13)
-    --        FROM sys.key_constraints k WITH (NOWAIT)
-    --        WHERE k.parent_object_id = @object_id 
-    --            AND k.[type] = 'PK'), '') + ')'  + CHAR(13)
-    --+ ISNULL((SELECT (
-    --    SELECT CHAR(13) +
-    --         'ALTER TABLE ' + @object_name + ' WITH' 
-    --        + CASE WHEN fk.is_not_trusted = 1 
-    --            THEN ' NOCHECK' 
-    --            ELSE ' CHECK' 
-    --          END + 
-    --          ' ADD CONSTRAINT [' + fk.name  + '] FOREIGN KEY(' 
-    --          + STUFF((
-    --            SELECT ', [' + k.cname + ']'
-    --            FROM fk_columns k
-    --            WHERE k.constraint_object_id = fk.[object_id]
-    --            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '')
-    --           + ')' +
-    --          ' REFERENCES [' + SCHEMA_NAME(ro.[schema_id]) + '].[' + ro.name + '] ('
-    --          + STUFF((
-    --            SELECT ', [' + k.rcname + ']'
-    --            FROM fk_columns k
-    --            WHERE k.constraint_object_id = fk.[object_id]
-    --            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '')
-    --           + ')'
-    --        + CASE 
-    --            WHEN fk.delete_referential_action = 1 THEN ' ON DELETE CASCADE' 
-    --            WHEN fk.delete_referential_action = 2 THEN ' ON DELETE SET NULL'
-    --            WHEN fk.delete_referential_action = 3 THEN ' ON DELETE SET DEFAULT' 
-    --            ELSE '' 
-    --          END
-    --        + CASE 
-    --            WHEN fk.update_referential_action = 1 THEN ' ON UPDATE CASCADE'
-    --            WHEN fk.update_referential_action = 2 THEN ' ON UPDATE SET NULL'
-    --            WHEN fk.update_referential_action = 3 THEN ' ON UPDATE SET DEFAULT'  
-    --            ELSE '' 
-    --          END 
-    --        + CHAR(13) + 'ALTER TABLE ' + @object_name + ' CHECK CONSTRAINT [' + fk.name  + ']' + CHAR(13)
-    --    FROM sys.foreign_keys fk WITH (NOWAIT)
-    --    JOIN sys.objects ro WITH (NOWAIT) ON ro.[object_id] = fk.referenced_object_id
-    --    WHERE fk.parent_object_id = @object_id
-    --    FOR XML PATH(N''), TYPE).value('.', 'NVARCHAR(MAX)')), '')
-    --+ ISNULL(((SELECT
-    --     CHAR(13) + 'CREATE' + CASE WHEN i.is_unique = 1 THEN ' UNIQUE' ELSE '' END 
-    --            + ' NONCLUSTERED INDEX [' + i.name + '] ON ' + @object_name + ' (' +
-    --            STUFF((
-    --            SELECT ', [' + c.name + ']' + CASE WHEN c.is_descending_key = 1 THEN ' DESC' ELSE ' ASC' END
-    --            FROM index_column c
-    --            WHERE c.is_included_column = 0
-    --                AND c.index_id = i.index_id
-    --            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') + ')'  
-    --            + ISNULL(CHAR(13) + 'INCLUDE (' + 
-    --                STUFF((
-    --                SELECT ', [' + c.name + ']'
-    --                FROM index_column c
-    --                WHERE c.is_included_column = 1
-    --                    AND c.index_id = i.index_id
-    --                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') + ')', '')  + CHAR(13)
-    --    FROM sys.indexes i WITH (NOWAIT)
-    --    WHERE i.[object_id] = @object_id
-    --        AND i.is_primary_key = 0
-    --        AND i.[type] = 2
-    --    FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)')
-    --), '')
 END
 
 GO
