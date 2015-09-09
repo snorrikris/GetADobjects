@@ -370,7 +370,7 @@ BEGIN
 			SELECT gm.*, GETDATE() AS [DeletedDate]
 			  FROM [dbo].[ADgroup_members] gm
 			  LEFT JOIN ##ADgroup_members t ON gm.GroupGUID = t.GroupGUID AND gm.MemberGUID = t.MemberGUID
-			  WHERE t.GroupGUID = NULL;
+			  WHERE t.GroupGUID IS NULL;
 			--SELECT a.*, GETDATE() AS [DeletedDate]
 			--FROM [dbo].[ADgroup_members] a
 			--WHERE ObjectGUID NOT IN (SELECT ObjectGUID FROM ##ADgroup_members);
