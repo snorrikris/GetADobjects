@@ -40,6 +40,14 @@ BEGIN
 		INSERT INTO ##ADusers EXEC dbo.clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
 		PRINT @CurrentOp + ' from AD into temp table: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
 
+		-- Insert into DeletedADusers table all rows from ADusers table that don't exist in the temp table.
+		-- (i.e. the rows that will be deleted by the MERGE statement.)
+		INSERT INTO [dbo].[DeletedADusers]
+			SELECT a.*, GETDATE() AS [DeletedDate]
+			FROM [dbo].[ADusers] a
+			WHERE ObjectGUID NOT IN (SELECT ObjectGUID FROM ##ADusers);
+		PRINT @CurrentOp + ' - deleted: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
+
 		-- Generate MERGE statement dynamically from table definition.
 		EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT;
 
@@ -112,6 +120,14 @@ BEGIN
 		INSERT INTO ##ADcontacts EXEC dbo.clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
 		PRINT @CurrentOp + ' from AD into temp table: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
 
+		-- Insert into DeletedADcontacts table all rows from ADcontacts table that don't exist in the temp table.
+		-- (i.e. the rows that will be deleted by the MERGE statement.)
+		INSERT INTO [dbo].[DeletedADcontacts]
+			SELECT a.*, GETDATE() AS [DeletedDate]
+			FROM [dbo].[ADcontacts] a
+			WHERE ObjectGUID NOT IN (SELECT ObjectGUID FROM ##ADcontacts);
+		PRINT @CurrentOp + ' - deleted: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
+
 		-- Generate MERGE statement dynamically from table definition.
 		EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
 
@@ -167,6 +183,14 @@ BEGIN
 		SET @ADfilter = '(objectCategory=computer)';
 		INSERT INTO ##ADcomputers EXEC dbo.clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
 		PRINT @CurrentOp + ' from AD into temp table: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
+
+		-- Insert into DeletedADcomputers table all rows from ADcomputers table that don't exist in the temp table.
+		-- (i.e. the rows that will be deleted by the MERGE statement.)
+		INSERT INTO [dbo].[DeletedADcomputers]
+			SELECT a.*, GETDATE() AS [DeletedDate]
+			FROM [dbo].[ADcomputers] a
+			WHERE ObjectGUID NOT IN (SELECT ObjectGUID FROM ##ADcomputers);
+		PRINT @CurrentOp + ' - deleted: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
 
 		-- Generate MERGE statement dynamically from table definition.
 		EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
@@ -287,6 +311,14 @@ BEGIN
 		INSERT INTO ##ADgroups EXEC dbo.clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
 		PRINT @CurrentOp + ' from AD into temp table: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
 
+		-- Insert into DeletedADgroups table all rows from ADgroups table that don't exist in the temp table.
+		-- (i.e. the rows that will be deleted by the MERGE statement.)
+		INSERT INTO [dbo].[DeletedADgroups]
+			SELECT a.*, GETDATE() AS [DeletedDate]
+			FROM [dbo].[ADgroups] a
+			WHERE ObjectGUID NOT IN (SELECT ObjectGUID FROM ##ADgroups);
+		PRINT @CurrentOp + ' - deleted: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
+
 		-- Generate MERGE statement dynamically from table definition.
 		EXECUTE [dbo].[usp_GenerateMergeStatement] @TableName, @tempTableName, @SQL OUTPUT
 
@@ -330,6 +362,19 @@ BEGIN
 		LEFT JOIN dbo.ADcontacts CN ON M.MemberDS = CN.DistinguishedName
 		LEFT JOIN dbo.ADwell_known_sids W ON M.MemberDS = W.DistinguishedName;
 		PRINT @CurrentOp + '(members) from XML into temp table: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
+
+		-- Insert into DeletedADgroup_members table all rows from ADgroup_members 
+		-- table that don't exist in the temp table.
+		-- (i.e. the rows that will be deleted by the MERGE statement.)
+		INSERT INTO [dbo].[DeletedADgroup_members]
+			SELECT gm.*, GETDATE() AS [DeletedDate]
+			  FROM [dbo].[ADgroup_members] gm
+			  LEFT JOIN ##ADgroup_members t ON gm.GroupGUID = t.GroupGUID AND gm.MemberGUID = t.MemberGUID
+			  WHERE t.GroupGUID = NULL;
+			--SELECT a.*, GETDATE() AS [DeletedDate]
+			--FROM [dbo].[ADgroup_members] a
+			--WHERE ObjectGUID NOT IN (SELECT ObjectGUID FROM ##ADgroup_members);
+		PRINT @CurrentOp + '(members) - deleted: ' + CAST(@@ROWCOUNT AS nvarchar(64)) + ' rows.';
 
 		PRINT 'MERGE Group members';
 		MERGE dbo.ADgroup_members WITH (HOLDLOCK) AS T
