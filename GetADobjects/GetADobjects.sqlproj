@@ -59,6 +59,8 @@
   <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
   <ItemGroup>
     <Folder Include="Properties" />
+    <Folder Include="_Docs" />
+    <Folder Include="SqlScripts" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -70,31 +72,52 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="GetADobjects.cs" />
+    <Compile Include="SqlDatasetUtilities.cs" />
+    <Compile Include="ADtableDefinitions.cs" />
+    <Compile Include="ReadImgSizeFromHeader.cs" />
+    <Compile Include="UACflags.cs" />
+    <Compile Include="ADhelpers.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="TestScript1.sql" />
-    <None Include="TestScript2.sql" />
-    <None Include="TestScript3.sql" />
-    <None Include="TestScript4.sql" />
-    <None Include="AD Column map.xlsx" />
-    <None Include="AD links.txt" />
-    <None Include="Timing tests.txt" />
-    <None Include="TestPhotoScript.sql" />
-    <None Include="AD research.docx" />
+    <None Include="_Docs\AD Column map.xlsx" />
+    <None Include="_Docs\AD links.txt" />
+    <None Include="_Docs\AD research.docx" />
+    <None Include="_Docs\Timing tests.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Get all AD objects into AD_DW DB.sql" />
+    <None Include="SqlScripts\Create_usp_GenerateMergeStatement.sql" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Get Cols as CSV string.sql" />
+    <None Include="SqlScripts\Create_usp_GenerateTempTableScript.sql" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="CreateTables.sql" />
-    <None Include="GetMembersInGroupAndSubgroups.sql" />
-    <None Include="GetUsersInGroupAndSubgroups.sql" />
+    <None Include="SqlScripts\CreateTables.sql" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Create_usp_GenerateMergeStatement.sql" />
-    <None Include="Create_usp_GenerateTempTableScript.sql" />
+    <None Include="SqlScripts\Get all AD objects into AD_DW DB.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\Get Cols as CSV string.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\GetMembersInGroupAndSubgroups.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\GetUsersInGroupAndSubgroups.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\TestPhotoScript.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\TestScript1.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\TestScript2.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\TestScript3.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\TestScript4.sql" />
   </ItemGroup>
 </Project>
