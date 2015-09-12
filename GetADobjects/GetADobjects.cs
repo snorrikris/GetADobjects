@@ -1,5 +1,6 @@
 using Microsoft.SqlServer.Server;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlTypes;
 using System.DirectoryServices;
@@ -39,6 +40,9 @@ public partial class StoredProcedures
             ADcolsTable TblData = new ADcolsTable((string)ADfilter);
             DataTable tbl = TblData.CreateTable();
             DataRow row;
+
+            // Create key/value collection - key is (user) distinguishedname, value is object GUID.
+            Dictionary<string, Guid> UserDStoGUID = new Dictionary<string, Guid>();
 
             DirectoryEntry entry = new DirectoryEntry((string)ADpath);
             DirectorySearcher searcher = new DirectorySearcher(entry);
@@ -128,6 +132,10 @@ public partial class StoredProcedures
                         && !(bool)row["PasswordNotRequired"])
                         IsUsrChgPwd = true;
                     row["UserMustChangePasswordAtNextLogon"] = IsUsrChgPwd;
+
+                    // Collect user distinguishedname into dictionary, value is object GUID.
+                    // This is needed later to set ManagerGUID column.
+                    UserDStoGUID.Add((string)row["distinguishedname"], (Guid)row["ObjectGUID"]);
                 }
 
                 // Save group members into the Xml document.
@@ -138,6 +146,23 @@ public partial class StoredProcedures
                     Util.SaveGroupMembersToXml(doc, body, parent, coll);
                 }
             }
+            // All rows have been added to dataset.
+
+            // set ManagerGUID column for user objects.
+            if (TblData.IsUser)
+            {
+                foreach (DataRow rowUsr in tbl.Rows)
+                {
+                    object manager = rowUsr["Manager"]; // distinguishedname of Manager.
+                    if (manager == DBNull.Value)
+                        continue;
+                    Guid ManagerGUID;
+                    if (UserDStoGUID.TryGetValue((string)manager, out ManagerGUID))
+                        rowUsr["ManagerGUID"] = ManagerGUID;
+                }
+            }
+
+            // Return dataset to SQL server.
             DataSetUtilities.SendDataTable(tbl);
 
             using (XmlNodeReader xnr = new XmlNodeReader(doc))
