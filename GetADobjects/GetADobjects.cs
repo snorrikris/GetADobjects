@@ -1,11 +1,8 @@
 using Microsoft.SqlServer.Server;
 using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlTypes;
 using System.DirectoryServices;
-using System.IO;
-using System.Security.Principal;
 using System.Xml;
 
 /*
@@ -122,6 +119,16 @@ public partial class StoredProcedures
                     }
                 }
                 tbl.Rows.Add(row);
+
+                if (TblData.IsUser)
+                {
+                    // Set UserMustChangePasswordAtNextLogon column value (for user objects).
+                    bool IsUsrChgPwd = false;
+                    if (row.IsNull("PasswordLastSet") && !(bool)row["PasswordNeverExpires"]
+                        && !(bool)row["PasswordNotRequired"])
+                        IsUsrChgPwd = true;
+                    row["UserMustChangePasswordAtNextLogon"] = IsUsrChgPwd;
+                }
 
                 // Save group members into the Xml document.
                 if (TblData.IsGroup && item.Properties.Contains("member"))
@@ -254,91 +261,4 @@ public partial class StoredProcedures
         }
         file.Close();
     }   // endof: clr_GetADusersPhotos
-
-    [Microsoft.SqlServer.Server.SqlProcedure]
-    public static void clr_GetADpropertiesToFile(SqlString ADpath, SqlString ADfilter)
-    {
-        System.IO.StreamWriter file = Util.CreateLogFile();
-
-        SearchResultCollection results = null;
-
-        try
-        {
-            DirectoryEntry entry = new DirectoryEntry((string)ADpath);
-
-            DirectorySearcher mySearcher = new DirectorySearcher(entry);
-            mySearcher.PropertiesToLoad.Add("msDS-User-Account-Control-Computed");
-
-            
-            mySearcher.PropertiesToLoad.Add("ms-DS-UserAccountAutoLocked"); // *
-            //mySearcher.PropertiesToLoad.Add("msDS-User-Account-Control-Computed");  // *
-            mySearcher.PropertiesToLoad.Add("msDS-UserAccountDisabled");
-            mySearcher.PropertiesToLoad.Add("msDS-UserDontExpirePassword");
-            mySearcher.PropertiesToLoad.Add("ms-DS-UserEncryptedTextPasswordAllowed");
-            mySearcher.PropertiesToLoad.Add("msDS-UserPasswordExpired");    // *
-            mySearcher.PropertiesToLoad.Add("ms-DS-UserPasswordNotRequired");
-            mySearcher.PropertiesToLoad.Add("userAccountControl");
-            
-            mySearcher.Filter = (string)ADfilter;
-
-            mySearcher.PageSize = 500;
-
-            results = mySearcher.FindAll();
-
-            foreach (SearchResult searchResult in results)
-            {
-                DirectoryEntry item = searchResult.GetDirectoryEntry();
-                Int64 exptm;
-                Int32 uac = Util.Get_userAccountControl(item, out exptm);
-                file.WriteLine("uac: 0x" + uac.ToString("X"));
-
-                // Iterate through each property name in each SearchResult.
-                foreach (string propertyKey in searchResult.Properties.PropertyNames)
-                {
-                    // Retrieve the value assigned to that property name 
-                    // in the ResultPropertyValueCollection.
-                    ResultPropertyValueCollection valueCollection =
-                        searchResult.Properties[propertyKey];
-
-                    if (propertyKey == "objectsid")
-                    {
-                        file.WriteLine("{0}: {1}", propertyKey, Util.GetSID(item, "objectsid"));
-                    }
-                    else if (propertyKey == "objectguid")
-                    {
-                        file.WriteLine("{0}: {1}", propertyKey, item.Guid.ToString());
-                    }
-                    else
-                    {
-                        // Iterate through values for each property name in each 
-                        // SearchResult.
-                        foreach (Object propertyValue in valueCollection)
-                        {
-                            // Handle results. Be aware that the following 
-                            // WriteLine only returns readable results for 
-                            // properties that are strings.
-                            file.WriteLine("{0}: {1}", propertyKey, propertyValue.ToString());
-                        }
-                    }
-                }
-                file.WriteLine("---------------------------------------------------------");
-            }
-        }
-        catch
-        {
-            throw;
-        }
-        finally
-        {
-            // To prevent memory leaks, always call 
-            // SearchResultCollection.Dispose() manually.
-            if (null != results)
-            {
-                results.Dispose();
-                results = null;
-            }
-        }
-        file.Close();
-    }   // endof: clr_GetADpropertiesToFile
 }   // endof: StoredProcedures partial class
-

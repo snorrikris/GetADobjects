@@ -120,4 +120,8 @@
   <ItemGroup>
     <None Include="SqlScripts\TestScript4.sql" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="SqlScripts\CompareUACflags.sql" />
+    <None Include="SqlScripts\CREATE usp_UpdateADxxxxx.sql" />
+  </ItemGroup>
 </Project>
