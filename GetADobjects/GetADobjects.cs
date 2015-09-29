@@ -146,7 +146,7 @@ public partial class StoredProcedures
                     Util.SaveGroupMembersToXml(doc, body, parent, coll);
                 }
             }
-            // All rows have been added to dataset.
+            // All rows have been added to the dataset.
 
             // set ManagerGUID column for user objects.
             if (TblData.IsUser)
@@ -162,7 +162,7 @@ public partial class StoredProcedures
                 }
             }
 
-            // Return dataset to SQL server.
+            // Return set dataset to SQL server.
             DataSetUtilities.SendDataTable(tbl);
 
             using (XmlNodeReader xnr = new XmlNodeReader(doc))

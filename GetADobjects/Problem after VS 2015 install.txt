@@ -1,0 +1,17 @@
+Had this problem after installing VS 2015:
+A .NET Framework error occurred during execution of user-defined routine or aggregate "clr_GetADobjects": 
+System.IO.FileLoadException: Could not load file or assembly 'System.DirectoryServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' or one of its dependencies. Assembly in host store has a different signature than assembly in GAC. (Exc
+eption from HRESULT: 0x80131050) See Microsoft Knowledge Base article 949080 for more information.
+
+This fixed it:
+Delete System.DirectoryServices.AccountManagement assembly from AD_DW.
+Run in SSMS on AD_DW database:
+ALTER ASSEMBLY  
+    [System.DirectoryServices] from 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.DirectoryServices.dll'
+    with permission_set = UNSAFE --Fails if not 64 on 64 bit machines 
+GO
+ALTER ASSEMBLY  
+    [System.DirectoryServices.Protocols] from 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.DirectoryServices.Protocols.dll'
+    with permission_set = UNSAFE --Fails if not 64 on 64 bit machines 
+GO
+
