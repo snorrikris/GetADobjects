@@ -162,8 +162,8 @@ public partial class StoredProcedures
                 }
             }
 
-            // Return set dataset to SQL server.
-            DataSetUtilities.SendDataTable(tbl);
+            // Return dataset to SQL server.
+            ReturnDatasetToSqlServer(tbl);
 
             using (XmlNodeReader xnr = new XmlNodeReader(doc))
             {
@@ -254,7 +254,9 @@ public partial class StoredProcedures
                 row[3] = prop[0];
                 tbl.Rows.Add(row);
             }
-            DataSetUtilities.SendDataTable(tbl);
+
+            // Return dataset to SQL server.
+            ReturnDatasetToSqlServer(tbl);
         }
         catch (System.Runtime.InteropServices.COMException)
         {
@@ -286,4 +288,17 @@ public partial class StoredProcedures
         }
         file.Close();
     }   // endof: clr_GetADusersPhotos
+
+    public static void ReturnDatasetToSqlServer(DataTable tbl)
+    {
+        try
+        {
+            DataSetUtilities.SendDataTable(tbl);
+        }
+        catch (Exception ex)
+        {
+            SqlContext.Pipe.Send("Exception in ReturnDatasetToSqlServer function: " + ex.Message);
+            throw;
+        }
+    }
 }   // endof: StoredProcedures partial class
