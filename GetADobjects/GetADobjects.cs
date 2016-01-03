@@ -128,9 +128,14 @@ public partial class StoredProcedures
                 {
                     // Set UserMustChangePasswordAtNextLogon column value (for user objects).
                     bool IsUsrChgPwd = false;
-                    if (row.IsNull("PasswordLastSet") && !(bool)row["PasswordNeverExpires"]
+                    if (row.IsNull("PasswordLastSet")
+                        && !row.IsNull("PasswordNeverExpires")
+                        && !row.IsNull("PasswordNotRequired")
+                        && !(bool)row["PasswordNeverExpires"]
                         && !(bool)row["PasswordNotRequired"])
+                    {
                         IsUsrChgPwd = true;
+                    }
                     row["UserMustChangePasswordAtNextLogon"] = IsUsrChgPwd;
 
                     // Collect user distinguishedname into dictionary, value is object GUID.

@@ -83,6 +83,7 @@
     <None Include="_Docs\AD links.txt" />
     <None Include="_Docs\AD research.docx" />
     <None Include="_Docs\Timing tests.txt" />
+    <None Include="_Docs\Deploy GetADobjects.docx" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SqlScripts\Create_usp_GenerateMergeStatement.sql" />

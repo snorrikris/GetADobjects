@@ -35,10 +35,10 @@
 --EXEC clr_GetADusersEx
 
 DECLARE @ADpath nvarchar(64) = 'LDAP://DC=veca,DC=is';
---DECLARE @ADfilter nvarchar(64) = '(&(objectCategory=person)(objectClass=user))';
+DECLARE @ADfilter nvarchar(64) = '(&(objectCategory=person)(objectClass=user))';
 --DECLARE @ADfilter nvarchar(64) = '(&(objectCategory=person)(objectClass=contact))';
 --DECLARE @ADfilter nvarchar(64) = '(objectCategory=computer)';
-DECLARE @ADfilter nvarchar(64) = '(objectCategory=group)';
+--DECLARE @ADfilter nvarchar(64) = '(objectCategory=group)';
 DECLARE @Members XML;
 EXEC clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
 WITH MemberList AS (
