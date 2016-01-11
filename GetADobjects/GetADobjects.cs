@@ -150,7 +150,7 @@ public partial class StoredProcedures
                     string parent = (string)row["distinguishedname"];
                     Util.SaveGroupMembersToXml(doc, body, parent, coll);
                 }
-            }
+            }   // endof: foreach (SearchResult searchResult in results)
             // All rows have been added to the dataset.
 
             // set ManagerGUID column for user objects.

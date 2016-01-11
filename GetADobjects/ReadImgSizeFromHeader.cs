@@ -61,12 +61,11 @@ public static class ImageHeader
     /// <summary>        
     /// Gets the dimensions of an image.        
     /// </summary>        
-    /// <param name="path">The path of the image to get the dimensions of.</param>        
+    /// <param name="binaryReader">Binary data of the image to get the dimensions of.</param>        
     /// <returns>The dimensions of the specified image.</returns>        
-    /// <exception cref="ArgumentException">The image was of an unrecognised format.</exception>            
     public static ImgSize GetDimensions(BinaryReader binaryReader)
     {
-        int maxMagicBytesLength = 8; // imageFormatDecoders.Keys.OrderByDescending(x => x.Length).First().Length;
+        int maxMagicBytesLength = 8;
         byte[] magicBytes = new byte[maxMagicBytesLength];
         for (int i = 0; i < maxMagicBytesLength; i += 1)
         {

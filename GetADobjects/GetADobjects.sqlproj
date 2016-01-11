@@ -84,27 +84,7 @@
     <None Include="_Docs\AD research.docx" />
     <None Include="_Docs\Timing tests.txt" />
     <None Include="_Docs\Deploy GetADobjects.docx" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\Create_usp_GenerateMergeStatement.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\Create_usp_GenerateTempTableScript.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\CreateTables.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\Get all AD objects into AD_DW DB.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\Get Cols as CSV string.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\GetMembersInGroupAndSubgroups.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\GetUsersInGroupAndSubgroups.sql" />
+    <None Include="_Docs\ToDo.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SqlScripts\TestPhotoScript.sql" />
@@ -116,13 +96,9 @@
     <None Include="SqlScripts\TestScript2.sql" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="SqlScripts\TestScript3.sql" />
+    <None Include="SqlScripts\TestScriptUsingTempTables.sql" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="SqlScripts\TestScript4.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\CompareUACflags.sql" />
-    <None Include="SqlScripts\CREATE usp_UpdateADxxxxx.sql" />
+    <None Include="SqlScripts\TestScriptUsingT.sql" />
   </ItemGroup>
 </Project>

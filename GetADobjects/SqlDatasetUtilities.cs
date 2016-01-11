@@ -30,6 +30,7 @@ public static class DataSetUtilities
         SqlDataRecord record = new SqlDataRecord(metaData);
         SqlPipe pipe = SqlContext.Pipe;
         pipe.SendResultsStart(record);
+        int rowcount = 0;
         try
         {
             foreach (DataRow row in dt.Rows)
@@ -43,7 +44,13 @@ public static class DataSetUtilities
                 }
 
                 pipe.SendResultsRow(record);
+                rowcount++;
             }
+        }
+        catch (Exception ex)
+        {
+            SqlContext.Pipe.Send("Exception in SendDataTable function: " + ex.Message);
+            throw;
         }
         finally
         {
