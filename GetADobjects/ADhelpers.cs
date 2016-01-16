@@ -7,30 +7,30 @@ using System.Xml;
 
 public static class Util
 {
-    public static System.IO.StreamWriter CreateLogFile()
-    {
-        System.IO.StreamWriter file = null;
-        try
-        {
-            string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+    //public static System.IO.StreamWriter CreateLogFile()
+    //{
+    //    System.IO.StreamWriter file = null;
+    //    try
+    //    {
+    //        string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
-            // Combine the base folder with your specific folder....
-            string specificFolder = Path.Combine(folder, "GetADobjects");
+    //        // Combine the base folder with your specific folder....
+    //        string specificFolder = Path.Combine(folder, "GetADobjects");
 
-            // Check if folder exists and if not, create it
-            if (!Directory.Exists(specificFolder))
-                Directory.CreateDirectory(specificFolder);
+    //        // Check if folder exists and if not, create it
+    //        if (!Directory.Exists(specificFolder))
+    //            Directory.CreateDirectory(specificFolder);
 
-            string filename = Path.Combine(specificFolder, "Log.txt");
+    //        string filename = Path.Combine(specificFolder, "Log.txt");
 
-            file = new System.IO.StreamWriter(filename);
-        }
-        catch (Exception ex)
-        {
-            string Msg = "Exception in CreateLogFile: " + ex.Message;
-        }
-        return file;
-    }
+    //        file = new System.IO.StreamWriter(filename);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        string Msg = "Exception in CreateLogFile: " + ex.Message;
+    //    }
+    //    return file;
+    //}
 
     public static PropertyValueCollection GetADproperty(DirectoryEntry item, string ADpropName)
     {

@@ -43,6 +43,7 @@ CREATE TABLE #ADusers(
 	[TrustedForDelegation] [bit] NULL,
 	[TrustedToAuthForDelegation] [bit] NULL,
 	[UseDESKeyOnly] [bit] NULL,
+	[UserMustChangePasswordAtNextLogon] [bit] NULL,
 	[HomedirRequired] [bit] NULL,
 	[LastBadPasswordAttempt] [datetime] NULL,
 	[BadLogonCount] [int] NULL,
@@ -70,7 +71,7 @@ CREATE TABLE #ADusers(
 	[ObjectClass] [nvarchar](64) NULL,
 	[SID] [nvarchar](128) NOT NULL,
 	[ObjectGUID] [uniqueidentifier] NOT NULL,
-	[ManagerGUID] [uniqueidentifier] NULL
+	[ManagerGUID] [uniqueidentifier] NULL,
 );
 
 CREATE TABLE #ADcontacts (
@@ -193,9 +194,9 @@ CREATE TABLE #WellKnownSIDs (
 
 -- Create lookup table for well known SIDs
 CREATE TABLE #ADwell_known_sids_lookup(
-[SID] [nvarchar](128) NOT NULL,
-[DisplayName] [nvarchar](128) NULL,
-[Description] [nvarchar](512) NULL
+	[SID] [nvarchar](128) NOT NULL,
+	[DisplayName] [nvarchar](128) NULL,
+	[Description] [nvarchar](512) NULL
 );
 
 INSERT #ADwell_known_sids_lookup ([SID], [DisplayName], [Description]) 
@@ -295,9 +296,16 @@ VALUES
 (N'S-1-5-32-579', N'BUILTIN\Access Control Assistance Operators', N'A Builtin Local group. Members of this group can remotely query authorization attributes and permissions for resources on this computer.'), 
 (N'S-1-5-32-580', N'BUILTIN\Remote Management Users', N'A Builtin Local group. Members of this group can access WMI resources over management protocols (such as WS-Management via the Windows Remote Management service). This applies only to WMI namespaces that grant access to the user.');
 
+CREATE TABLE #ADusersPhotos (
+	[ObjectGUID] [uniqueidentifier] NOT NULL,
+	[Width] [int] NULL,
+	[Height] [int] NULL,
+	[Photo] [varbinary](max) NULL
+);
+
 PRINT 'Get all users from AD into temp table'
 DECLARE @Members XML;
-DECLARE @ADfilter nvarchar(64) = '(&(objectCategory=person)(objectClass=user))';
+DECLARE @ADfilter nvarchar(4000) = '(&(objectCategory=person)(objectClass=user))';
 INSERT INTO #ADusers EXEC clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
 SELECT * FROM #ADusers;
 
@@ -352,6 +360,14 @@ LEFT JOIN #ADcontacts CN ON M.MemberDS = CN.DistinguishedName
 LEFT JOIN #WellKnownSIDs W ON M.MemberDS = W.DistinguishedName;
 SELECT * FROM #ADgroup_members;
 
+PRINT 'INSERT user photos into temp table.';
+--DECLARE @ADfilter nvarchar(128) = '(&(objectCategory=person)(objectClass=user)(SamAccountName=snorri))';
+SET @ADfilter = '(&(objectCategory=person)(objectClass=user))';
+INSERT INTO #ADusersPhotos EXEC clr_GetADusersPhotos @ADpath, @ADfilter;
+SELECT u.DisplayName, p.Height, p.Width
+FROM #ADusersPhotos p
+JOIN #ADusers u ON p.ObjectGUID = u.ObjectGUID;
+
 PRINT 'DROP temp tables.'
 DROP TABLE #ADusers;
 DROP TABLE #ADcontacts;
@@ -360,3 +376,4 @@ DROP TABLE #WellKnownSIDs;
 DROP TABLE #ADwell_known_sids_lookup;
 DROP TABLE #ADgroups;
 DROP TABLE #ADgroup_members;
+DROP TABLE #ADusersPhotos;

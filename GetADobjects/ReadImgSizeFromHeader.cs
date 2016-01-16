@@ -7,10 +7,12 @@ public struct ImgSize
 {
     public Int32 Width;
     public Int32 Height;
-    public ImgSize(Int32 width, Int32 height)
+    public string Format;
+    public ImgSize(Int32 width, Int32 height, string format)
     {
         this.Width = width;
         this.Height = height;
+        this.Format = format;
     }
     public bool IsEmpty()
     {
@@ -40,7 +42,7 @@ public static class ImageHeader
     public static ImgSize GetDimensions(byte[] imgdata)
     {
         MemoryStream memstream = null;
-        ImgSize imgsize = new ImgSize(0, 0);
+        ImgSize imgsize = new ImgSize(0, 0, "xxx");
         try
         {
             memstream = new MemoryStream(imgdata);
@@ -78,7 +80,7 @@ public static class ImageHeader
                 }
             }
         }
-        return new ImgSize(0, 0);
+        return new ImgSize(0, 0, "xxx");
     }
 
     private static bool StartsWith(byte[] thisBytes, byte[] thatBytes)
@@ -130,14 +132,14 @@ public static class ImageHeader
         binaryReader.ReadBytes(16);
         int width = binaryReader.ReadInt32();
         int height = binaryReader.ReadInt32();
-        return new ImgSize(width, height);
+        return new ImgSize(width, height, "bmp");
     }
 
     private static ImgSize DecodeGif(BinaryReader binaryReader)
     {
         int width = binaryReader.ReadInt16();
         int height = binaryReader.ReadInt16();
-        return new ImgSize(width, height);
+        return new ImgSize(width, height, "gif");
     }
 
     private static ImgSize DecodePng(BinaryReader binaryReader)
@@ -145,7 +147,7 @@ public static class ImageHeader
         binaryReader.ReadBytes(8);
         int width = ReadLittleEndianInt32(binaryReader);
         int height = ReadLittleEndianInt32(binaryReader);
-        return new ImgSize(width, height);
+        return new ImgSize(width, height, "png");
     }
 
     private static ImgSize DecodeJfif(BinaryReader binaryReader)
@@ -159,7 +161,7 @@ public static class ImageHeader
                 binaryReader.ReadByte();
                 int height = ReadLittleEndianInt16(binaryReader);
                 int width = ReadLittleEndianInt16(binaryReader);
-                return new ImgSize(width, height);
+                return new ImgSize(width, height, "jpg");
             }
 
             if (chunkLength < 0)
@@ -172,7 +174,7 @@ public static class ImageHeader
                 binaryReader.ReadBytes(chunkLength - 2);
             }
         }
-        return new ImgSize(0, 0);
+        return new ImgSize(0, 0, "xxx");
     }
 }
 

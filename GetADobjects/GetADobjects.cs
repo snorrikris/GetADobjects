@@ -24,7 +24,7 @@ public partial class StoredProcedures
 
         MemberList = new SqlXml();
 
-        System.IO.StreamWriter file = Util.CreateLogFile();
+        //System.IO.StreamWriter file = Util.CreateLogFile();
 
         SearchResultCollection results = null;
         Int32 itemcount = 0;
@@ -203,13 +203,13 @@ public partial class StoredProcedures
                 results = null;     // SearchResultCollection.Dispose() manually.
             }
         }
-        file.Close();
+        //file.Close();
     }   // endof: clr_GetADobjects
 
     [Microsoft.SqlServer.Server.SqlProcedure]
     public static void clr_GetADusersPhotos(SqlString ADpath, SqlString ADfilter)
     {
-        System.IO.StreamWriter file = Util.CreateLogFile();
+        //System.IO.StreamWriter file = Util.CreateLogFile();
 
         SearchResultCollection results = null;
         Int32 itemcount = 0;
@@ -219,6 +219,7 @@ public partial class StoredProcedures
             tbl.Columns.Add("ObjectGUID", typeof(Guid));
             tbl.Columns.Add("Width", typeof(int));
             tbl.Columns.Add("Height", typeof(int));
+            tbl.Columns.Add("Format", typeof(string));
             tbl.Columns.Add("Photo", typeof(byte[]));
             DataRow row;
 
@@ -238,7 +239,7 @@ public partial class StoredProcedures
                     continue;
 
                 // Get image size
-                ImgSize imgsize = new ImgSize(0, 0);
+                ImgSize imgsize = new ImgSize(0, 0, "xxx");
                 try
                 {
                     imgsize = ImageHeader.GetDimensions((byte[])prop[0]);
@@ -255,8 +256,9 @@ public partial class StoredProcedures
                 {
                     row[1] = imgsize.Width;
                     row[2] = imgsize.Height;
+                    row[3] = imgsize.Format;
                 }
-                row[3] = prop[0];
+                row[4] = prop[0];
                 tbl.Rows.Add(row);
             }
 
@@ -291,7 +293,7 @@ public partial class StoredProcedures
                 results = null;     // SearchResultCollection.Dispose() manually.
             }
         }
-        file.Close();
+        //file.Close();
     }   // endof: clr_GetADusersPhotos
 
     public static void ReturnDatasetToSqlServer(DataTable tbl)
