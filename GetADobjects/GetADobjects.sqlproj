@@ -85,6 +85,8 @@
     <None Include="_Docs\Timing tests.txt" />
     <None Include="_Docs\Deploy GetADobjects.docx" />
     <None Include="_Docs\ToDo.txt" />
+    <None Include="SqlScripts\ExportPhotosToFilesUsing BCP.sql" />
+    <None Include="SqlScripts\ExportPhotosToFiles_1.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SqlScripts\TestPhotoScript.sql" />

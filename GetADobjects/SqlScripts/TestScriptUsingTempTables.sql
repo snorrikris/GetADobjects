@@ -300,6 +300,7 @@ CREATE TABLE #ADusersPhotos (
 	[ObjectGUID] [uniqueidentifier] NOT NULL,
 	[Width] [int] NULL,
 	[Height] [int] NULL,
+	[Format] [nvarchar](6),
 	[Photo] [varbinary](max) NULL
 );
 
@@ -364,7 +365,7 @@ PRINT 'INSERT user photos into temp table.';
 --DECLARE @ADfilter nvarchar(128) = '(&(objectCategory=person)(objectClass=user)(SamAccountName=snorri))';
 SET @ADfilter = '(&(objectCategory=person)(objectClass=user))';
 INSERT INTO #ADusersPhotos EXEC clr_GetADusersPhotos @ADpath, @ADfilter;
-SELECT u.DisplayName, p.Height, p.Width
+SELECT u.DisplayName, p.Height, p.Width, p.[Format]
 FROM #ADusersPhotos p
 JOIN #ADusers u ON p.ObjectGUID = u.ObjectGUID;
 
