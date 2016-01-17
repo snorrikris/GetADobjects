@@ -325,7 +325,7 @@ SET @ADfilter = '(|(objectSID=S-1-0)(objectSID=S-1-0-0)(objectSID=S-1-1)(objectS
 INSERT INTO #WellKnownSIDs EXEC clr_GetADobjects @ADpath, @ADfilter, @Members OUTPUT;
 SELECT * FROM #WellKnownSIDs;
 
-PRINT 'Get DisplayName and Description of Well Known SIDsfrom lookup table'
+PRINT 'Get DisplayName and Description of Well Known SIDs from lookup table'
 UPDATE W
 SET W.[DisplayName] = L.[DisplayName],
 	W.[Description] = L.[Description]

@@ -85,22 +85,10 @@
     <None Include="_Docs\Timing tests.txt" />
     <None Include="_Docs\Deploy GetADobjects.docx" />
     <None Include="_Docs\ToDo.txt" />
-    <None Include="SqlScripts\ExportPhotosToFilesUsing BCP.sql" />
-    <None Include="SqlScripts\ExportPhotosToFiles_1.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\TestPhotoScript.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\TestScript1.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\TestScript2.sql" />
+    <None Include="SqlScripts\ExportPhotosToFiles.sql" />
+    <None Include="SqlScripts\TestAllTypesScript.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SqlScripts\TestScriptUsingTempTables.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="SqlScripts\TestScriptUsingT.sql" />
   </ItemGroup>
 </Project>
