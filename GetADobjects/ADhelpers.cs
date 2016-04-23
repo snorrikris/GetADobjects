@@ -186,24 +186,6 @@ public static class Util
         return cantChange;
     }
 
-    //private static Int64 GetFileTime(DirectoryEntry item, string ADpropName)
-    //{
-    //    Int64 time = 0;
-    //    if (item.Properties.Contains(ADpropName))
-    //    {
-    //        try
-    //        {
-    //            time = (Int64)item.Properties[ADpropName][0];
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            SqlContext.Pipe.Send("Warning: GetFileTime (" + ADpropName + ") failed for object (" + GetDistinguishedName(item) + ")"
-    //                    + " Exception: " + ex.Message);
-    //        }
-    //    }
-    //    return time;
-    //}
-
     public static Int64 GetFileTime(SearchResult sr, string ADpropName)
     {
         Int64 time = 0;

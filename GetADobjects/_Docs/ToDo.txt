@@ -2,9 +2,9 @@ V	Eyða út SQL scripts sem eru partur af UpdateAD_DW solution.
 
 V	Eyða út (eða færa) SQL scripts sem eru tilraunir.
 
-	Eyða út óþarfa test scripts
+V	Eyða út óþarfa test scripts
 
-	Búa til test scripts sem nota temp table.
+V	Búa til test scripts sem nota temp table.
 
 	Review code add comments (function descriptions).
 

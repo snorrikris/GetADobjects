@@ -87,6 +87,9 @@
     <None Include="_Docs\ToDo.txt" />
     <None Include="SqlScripts\ExportPhotosToFiles.sql" />
     <None Include="SqlScripts\TestAllTypesScript.sql" />
+    <None Include="_Docs\Deploy GetADobjects.pdf" />
+    <None Include="_Docs\Problem after VS 2015 install.txt" />
+    <None Include="_Docs\AD_DW_Users table map to .net V4.xlsx" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SqlScripts\TestScriptUsingTempTables.sql" />

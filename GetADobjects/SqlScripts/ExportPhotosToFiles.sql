@@ -2,7 +2,7 @@
 -- See: https://msdn.microsoft.com/en-us/library/ms191188.aspx
 
 -- Set Domain path.
-DECLARE @ADpath nvarchar(64) = 'LDAP://DC=veca,DC=is';
+DECLARE @ADpath nvarchar(64) = 'LDAP://DC=contoso,DC=com';
 
 -- Set file path. (note the SQL service user must have (at least) write permission to this folder).
 DECLARE	@FilePath varchar(128) = 'C:\Photos\';

@@ -1,5 +1,5 @@
 ﻿-- Set Domain path.
-DECLARE @ADpath nvarchar(64) = 'LDAP://DC=veca,DC=is';
+DECLARE @ADpath nvarchar(64) = 'LDAP://DC=contoso,DC=com';
 
 PRINT 'Get all users from AD'
 DECLARE @Members XML;
